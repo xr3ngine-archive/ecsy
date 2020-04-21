@@ -16,7 +16,7 @@ export default class QueryManager {
   onEntityRemoved(entity) {
     for (var queryName in this._queries) {
       var query = this._queries[queryName];
-      if (entity.queries.indexOf(query) !== -1) {
+      if (query.entities.indexOf(entity) !== -1) {
         query.removeEntity(entity);
       }
     }

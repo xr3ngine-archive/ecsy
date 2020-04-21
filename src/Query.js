@@ -35,7 +35,6 @@ export default class Query {
       var entity = manager._entities[i];
       if (this.match(entity)) {
         // @todo ??? this.addEntity(entity); => preventing the event to be generated
-        entity.queries.push(this);
         this.entities.push(entity);
       }
     }
@@ -46,7 +45,6 @@ export default class Query {
    * @param {Entity} entity
    */
   addEntity(entity) {
-    entity.queries.push(this);
     this.entities.push(entity);
 
     this.eventDispatcher.dispatchEvent(Query.prototype.ENTITY_ADDED, entity);
@@ -60,9 +58,6 @@ export default class Query {
     let index = this.entities.indexOf(entity);
     if (~index) {
       this.entities.splice(index, 1);
-
-      index = entity.queries.indexOf(this);
-      entity.queries.splice(index, 1);
 
       this.eventDispatcher.dispatchEvent(
         Query.prototype.ENTITY_REMOVED,

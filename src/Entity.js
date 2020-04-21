@@ -1,17 +1,11 @@
-import Query from "./Query.js";
-import wrapImmutableComponent from "./WrapImmutableComponent.js";
-
-// @todo Take this out from there or use ENV
-const DEBUG = false;
-
-var nextId = 0;
-
 export default class Entity {
-  constructor(world) {
-    this._world = world || null;
+  constructor(entityManager) {
+    this._entityManager = entityManager || null;
 
     // Unique ID for this entity
-    this.id = nextId++;
+    this.id = undefined;
+
+    this.alive = false;
 
     // List of components types the entity has
     this._ComponentTypes = [];
@@ -21,113 +15,75 @@ export default class Entity {
 
     this._componentsToRemove = {};
 
-    // Queries where the entity is added
-    this.queries = [];
-
     // Used for deferred removal
     this._ComponentTypesToRemove = [];
 
-    this.alive = false;
-
     //if there are state components on a entity, it can't be removed completely
-    this.numStateComponents = 0;
+    this._numStateComponents = 0;
   }
 
   // COMPONENTS
 
   getComponent(Component, includeRemoved) {
-    var component = this._components[Component.name];
-
-    if (!component && includeRemoved === true) {
-      component = this._componentsToRemove[Component.name];
-    }
-
-    return DEBUG ? wrapImmutableComponent(Component, component) : component;
+    return this._entityManager.entityGetComponent(Component, includeRemoved);
   }
 
   getRemovedComponent(Component) {
-    return this._componentsToRemove[Component.name];
+    return this._entityManager.getRemovedComponent(this, Component);
   }
 
   getComponents() {
-    return this._components;
+    return this._entityManager.getComponents(this);
   }
 
   getComponentsToRemove() {
-    return this._componentsToRemove;
+    return this._entityManager.entityGetComponentsToRemove(this);
   }
 
   getComponentTypes() {
-    return this._ComponentTypes;
+    return this._entityManager.entityGetComponentTypes(this);
   }
 
   getMutableComponent(Component) {
-    var component = this._components[Component.name];
-    for (var i = 0; i < this.queries.length; i++) {
-      var query = this.queries[i];
-      // @todo accelerate this check. Maybe having query._Components as an object
-      if (query.reactive && query.Components.indexOf(Component) !== -1) {
-        query.eventDispatcher.dispatchEvent(
-          Query.prototype.COMPONENT_CHANGED,
-          this,
-          component
-        );
-      }
-    }
-    return component;
+    return this._entityManager.entityGetMutableComponent(this, Component);
   }
 
   addComponent(Component, values) {
-    this._world.entityAddComponent(this, Component, values);
-    return this;
+    return this._entityManager.entityAddComponent(this, Component, values);
   }
 
   removeComponent(Component, forceImmediate) {
-    this._world.entityRemoveComponent(this, Component, forceImmediate);
-    return this;
+    return this._entityManager.entityRemoveComponent(this, Component, forceImmediate);
   }
 
   hasComponent(Component, includeRemoved) {
-    return (
-      !!~this._ComponentTypes.indexOf(Component) ||
-      (includeRemoved === true && this.hasRemovedComponent(Component))
-    );
+    return this._entityManager.entityHasComponent(this, Component, includeRemoved);
   }
 
   hasRemovedComponent(Component) {
-    return !!~this._ComponentTypesToRemove.indexOf(Component);
+    return this._entityManager.entityHasRemovedComponent(this, Component);
   }
 
   hasAllComponents(Components) {
-    for (var i = 0; i < Components.length; i++) {
-      if (!this.hasComponent(Components[i])) return false;
-    }
-    return true;
+    return this._entityManager.entityHasAllComponents(Components);
   }
 
   hasAnyComponents(Components) {
-    for (var i = 0; i < Components.length; i++) {
-      if (this.hasComponent(Components[i])) return true;
-    }
-    return false;
+    return this._entityManager.entityHasAnyComponents(this, Components);
   }
 
   removeAllComponents(forceImmediate) {
-    return this._world.entityRemoveAllComponents(this, forceImmediate);
+    this._entityManager.entityRemoveAllComponents(this, forceImmediate);
   }
 
   // EXTRAS
 
   // Initialize the entity. To be used when returning an entity to the pool
   reset() {
-    this.id = nextId++;
-    this._world = null;
-    this._ComponentTypes.length = 0;
-    this.queries.length = 0;
-    this._components = {};
+    this.entityId = -1;
   }
 
-  remove(forceImmediate) {
-    return this._world.removeEntity(this, forceImmediate);
+  dispose(forceImmediate) {
+    this._entityManager.disposeEntity(this, forceImmediate);
   }
 }
