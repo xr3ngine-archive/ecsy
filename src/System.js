@@ -100,7 +100,7 @@ export class System {
                   let changedList = (this.queries[queryName][eventName] = {});
                   event.forEach(component => {
                     let eventList = (changedList[
-                      componentPropertyName(component)
+                      component.name
                     ] = []);
                     query.eventDispatcher.addEventListener(
                       Query.prototype.COMPONENT_CHANGED,

@@ -2,7 +2,6 @@ import Entity from "./Entity.js";
 import ObjectPool from "./ObjectPool.js";
 import QueryManager from "./QueryManager.js";
 import EventDispatcher from "./EventDispatcher.js";
-import { componentPropertyName, getName } from "./Utils.js";
 import { SystemStateComponent } from "./SystemStateComponent.js";
 
 /**
@@ -21,7 +20,7 @@ export class EntityManager {
 
     this._queryManager = new QueryManager(this);
     this.eventDispatcher = new EventDispatcher();
-    this._entityPool = new ObjectPool(Entity);
+    this._entityPool = new ObjectPool(new Entity());
 
     // Deferred deletion
     this.entitiesWithComponentsToRemove = [];
@@ -39,7 +38,7 @@ export class EntityManager {
    * Create a new entity
    */
   createEntity(name) {
-    var entity = this._entityPool.aquire();
+    var entity = this._entityPool.acquire();
     entity.alive = true;
     entity.name = name || "";
     if (name) {
@@ -76,7 +75,7 @@ export class EntityManager {
     var componentPool = this.world.componentsManager.getComponentsPool(
       Component
     );
-    var component = componentPool.aquire();
+    var component = componentPool.acquire();
 
     entity._components[Component.name] = component;
 
@@ -117,7 +116,7 @@ export class EntityManager {
       entity._ComponentTypes.splice(index, 1);
       entity._ComponentTypesToRemove.push(Component);
 
-      var componentName = getName(Component);
+      var componentName = Component.name;
       entity._componentsToRemove[componentName] =
         entity._components[componentName];
       delete entity._components[componentName];
@@ -139,11 +138,10 @@ export class EntityManager {
   _entityRemoveComponentSync(entity, Component, index) {
     // Remove T listing on entity and property ref, then free the component.
     entity._ComponentTypes.splice(index, 1);
-    var propName = componentPropertyName(Component);
-    var componentName = getName(Component);
+    var componentName = Component.name;
     var component = entity._components[componentName];
     delete entity._components[componentName];
-    this.componentsManager._componentPool[propName].release(component);
+    this.componentsManager._componentPool[componentName].release(component);
     this.world.componentsManager.componentRemovedFromEntity(Component);
   }
 
@@ -220,8 +218,8 @@ export class EntityManager {
       while (entity._ComponentTypesToRemove.length > 0) {
         let Component = entity._ComponentTypesToRemove.pop();
 
-        var propName = componentPropertyName(Component);
-        var componentName = getName(Component);
+        var propName = Component.name;
+        var componentName = Component.name;
         var component = entity._componentsToRemove[componentName];
         delete entity._componentsToRemove[componentName];
         this.componentsManager._componentPool[propName].release(component);

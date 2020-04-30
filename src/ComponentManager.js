@@ -1,6 +1,4 @@
 import ObjectPool from "./ObjectPool.js";
-import DummyObjectPool from "./DummyObjectPool.js";
-import { componentPropertyName } from "./Utils.js";
 
 export class ComponentManager {
   constructor() {
@@ -9,7 +7,7 @@ export class ComponentManager {
     this.numComponents = {};
   }
 
-  registerComponent(Component) {
+  registerComponent(Component, objectPool) {
     if (this.Components[Component.name]) {
       console.warn(`Component type: '${Component.name}' already registered.`);
       return;
@@ -17,6 +15,14 @@ export class ComponentManager {
 
     this.Components[Component.name] = Component;
     this.numComponents[Component.name] = 0;
+
+    if (objectPool === false) {
+      objectPool = null;
+    } else if (objectPool === undefined) {
+      objectPool = new ObjectPool(new Component());
+    }
+
+    this._componentPool[Component.name] = objectPool;
   }
 
   componentAddedToEntity(Component) {
@@ -32,19 +38,6 @@ export class ComponentManager {
   }
 
   getComponentsPool(Component) {
-    var componentName = componentPropertyName(Component);
-
-    if (!this._componentPool[componentName]) {
-      if (Component.prototype.reset) {
-        this._componentPool[componentName] = new ObjectPool(Component);
-      } else {
-        console.warn(
-          `Component '${Component.name}' won't benefit from pooling because 'reset' method was not implemented.`
-        );
-        this._componentPool[componentName] = new DummyObjectPool(Component);
-      }
-    }
-
-    return this._componentPool[componentName];
+    return this._componentPool[Component.name];
   }
 }
