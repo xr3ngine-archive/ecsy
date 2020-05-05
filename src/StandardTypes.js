@@ -1,86 +1,29 @@
-import { createType } from "./CreateType";
+import { Entity } from "./Entity";
+import { Component } from "./Component";
 
-/**
- * Standard types
- */
-var Types = {};
+export const copyValue = (src, dest, key) => dest[key] = src[key];
+export const copyArray = (src, dest, key) => {
+  const srcArray = src[key];
+  const destArray = dest[key];
+  
+  destArray.length = 0;
 
-Types.Number = createType({
-  baseType: Number,
-  isSimpleType: true,
-  create: defaultValue => {
-    return typeof defaultValue !== "undefined" ? defaultValue : 0;
-  },
-  reset: (src, key, defaultValue) => {
-    if (typeof defaultValue !== "undefined") {
-      src[key] = defaultValue;
-    } else {
-      src[key] = 0;
-    }
-  },
-  clear: (src, key) => {
-    src[key] = 0;
+  for (let i = 0; i < srcArray.length; i++) {
+    destArray.push(srcArray[i]);
   }
-});
 
-Types.Boolean = createType({
-  baseType: Boolean,
-  isSimpleType: true,
-  create: defaultValue => {
-    return typeof defaultValue !== "undefined" ? defaultValue : false;
-  },
-  reset: (src, key, defaultValue) => {
-    if (typeof defaultValue !== "undefined") {
-      src[key] = defaultValue;
-    } else {
-      src[key] = false;
-    }
-  },
-  clear: (src, key) => {
-    src[key] = false;
-  }
-});
+  return destArray;
+};
+export const copyJSON = (src, dest, key) => dest[key] = JSON.parse(JSON.stringify(src[key]));
+export const copyCopyable = (src, dest, key) => dest[key].copy(src[key]);
 
-Types.String = createType({
-  baseType: String,
-  isSimpleType: true,
-  create: defaultValue => {
-    return typeof defaultValue !== "undefined" ? defaultValue : "";
-  },
-  reset: (src, key, defaultValue) => {
-    if (typeof defaultValue !== "undefined") {
-      src[key] = defaultValue;
-    } else {
-      src[key] = "";
-    }
-  },
-  clear: (src, key) => {
-    src[key] = "";
-  }
-});
+export const Types = new Map();
 
-Types.Array = createType({
-  baseType: Array,
-  create: defaultValue => {
-    if (typeof defaultValue !== "undefined") {
-      return defaultValue.slice();
-    }
-
-    return [];
-  },
-  reset: (src, key, defaultValue) => {
-    if (typeof defaultValue !== "undefined") {
-      src[key] = defaultValue.slice();
-    } else {
-      src[key].length = 0;
-    }
-  },
-  clear: (src, key) => {
-    src[key].length = 0;
-  },
-  copy: (src, dst, key) => {
-    src[key] = dst[key].slice();
-  }
-});
-
-export { Types };
+Types.set(Number, { default: 0, copy: copyValue });
+Types.set(Boolean, { default: false, copy: copyValue });
+Types.set(String, { default: "", copy: copyValue });
+Types.set(Object, { default: undefined, copy: copyValue });
+Types.set(Array, { default: [], copy: copyArray });
+Types.set(JSON, { default: null, copy: copyJSON });
+Types.set(Entity, { default: undefined, copy: copyCopyable });
+Types.set(Component, { default: undefined, copy: copyCopyable });

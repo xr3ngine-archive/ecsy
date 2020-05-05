@@ -25,9 +25,14 @@ export class ComponentManager {
     this._componentPool[Component.name] = objectPool;
   }
 
+  createComponent(Component) {
+    const componentPool = this._componentPool[Component.name];
+    return componentPool.acquire();
+  }
+
   componentAddedToEntity(Component) {
     if (!this.Components[Component.name]) {
-      this.registerComponent(Component);
+      console.warn(`Component ${Component.name} not registered.`);
     }
 
     this.numComponents[Component.name]++;

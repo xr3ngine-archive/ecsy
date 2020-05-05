@@ -1,8 +1,7 @@
-import Entity from "./Entity.js";
+import { Entity, EntityState } from "./Entity.js";
 import ObjectPool from "./ObjectPool.js";
 import QueryManager from "./QueryManager.js";
 import EventDispatcher from "./EventDispatcher.js";
-import { SystemStateComponent } from "./SystemStateComponent.js";
 
 /**
  * @private
@@ -16,11 +15,13 @@ export class EntityManager {
     // All the entities in this instance
     this._entities = [];
 
-    this._entitiesByNames = {};
+    this._entitiesByUUID = {};
 
     this._queryManager = new QueryManager(this);
     this.eventDispatcher = new EventDispatcher();
-    this._entityPool = new ObjectPool(new Entity());
+    this._entityPool = new ObjectPool(new Entity(world));
+    this._entityPools = {};
+    this._entityTypes = {};
 
     // Deferred deletion
     this.entitiesWithComponentsToRemove = [];
@@ -30,175 +31,67 @@ export class EntityManager {
     this.numStateComponents = 0;
   }
 
-  getEntityByName(name) {
-    return this._entitiesByNames[name];
+  registerEntityType(EntityType, entityPool) {
+    if (this._entityTypes[EntityType.name]) {
+      console.warn(`Entity type: '${EntityType.name}' already registered.`);
+      return;
+    }
+
+    this._entityTypes[EntityType.name] = EntityType;
+
+    if (entityPool === false) {
+      entityPool = null;
+    } else if (entityPool === undefined) {
+      entityPool = new ObjectPool(new EntityType(this.world));
+    }
+
+    this._entityPools[EntityType.name] = entityPool;
+  }
+
+  getEntityByUUID(name) {
+    return this._entitiesByUUID[name];
   }
 
   /**
    * Create a new entity
    */
-  createEntity(name) {
-    var entity = this._entityPool.acquire();
-    entity.alive = true;
-    entity.name = name || "";
-    if (name) {
-      if (this._entitiesByNames[name]) {
-        console.warn(`Entity name '${name}' already exist`);
-      } else {
-        this._entitiesByNames[name] = entity;
-      }
-    }
+  createEntity(EntityType) {
+    const entity = this.createDetachedEntity(EntityType);
+    return this.addEntity(entity)
+  }
 
-    entity._world = this;
-    this._entities.push(entity);
-    this.eventDispatcher.dispatchEvent(ENTITY_CREATED, entity);
+  createDetachedEntity(EntityType) {
+    const entityPool = EntityType === undefined ? this._entityPool : this._entityPools[EntityType.name];
+
+    const entity = entityPool ? entityPool.acquire() : new EntityType(this.world);
+
     return entity;
   }
 
-  // COMPONENTS
-
-  /**
-   * Add a component to an entity
-   * @param {Entity} entity Entity where the component will be added
-   * @param {Component} Component Component to be added to the entity
-   * @param {Object} values Optional values to replace the default attributes
-   */
-  entityAddComponent(entity, Component, values) {
-    if (~entity._ComponentTypes.indexOf(Component)) return;
-
-    entity._ComponentTypes.push(Component);
-
-    if (Component.__proto__ === SystemStateComponent) {
-      this.numStateComponents++;
+  addEntity(entity) {
+    if (this._entitiesByUUID[entity.uuid])  {
+      console.warn(`Entity ${entity.uuid} already added.`);
+      return entity;
     }
 
-    var componentPool = this.world.componentsManager.getComponentsPool(
-      Component
-    );
-    var component = componentPool.acquire();
+    this._entitiesByUUID[entity.uuid] = entity;
+    this._entities.push(entity);
+    entity.state = EntityState.alive;
+    this.eventDispatcher.dispatchEvent(ENTITY_CREATED, entity);
 
-    entity._components[Component.name] = component;
-
-    if (values) {
-      if (component.copy) {
-        component.copy(values);
-      } else {
-        for (var name in values) {
-          component[name] = values[name];
-        }
-      }
-    }
-
-    this._queryManager.onEntityComponentAdded(entity, Component);
-    this.world.componentsManager.componentAddedToEntity(Component);
-
-    this.eventDispatcher.dispatchEvent(COMPONENT_ADDED, entity, Component);
+    return entity;
   }
 
-  /**
-   * Remove a component from an entity
-   * @param {Entity} entity Entity which will get removed the component
-   * @param {*} Component Component to remove from the entity
-   * @param {Bool} immediately If you want to remove the component immediately instead of deferred (Default is false)
-   */
-  entityRemoveComponent(entity, Component, immediately) {
-    var index = entity._ComponentTypes.indexOf(Component);
-    if (!~index) return;
-
-    this.eventDispatcher.dispatchEvent(COMPONENT_REMOVE, entity, Component);
-
-    if (immediately) {
-      this._entityRemoveComponentSync(entity, Component, index);
-    } else {
-      if (entity._ComponentTypesToRemove.length === 0)
-        this.entitiesWithComponentsToRemove.push(entity);
-
-      entity._ComponentTypes.splice(index, 1);
-      entity._ComponentTypesToRemove.push(Component);
-
-      var componentName = Component.name;
-      entity._componentsToRemove[componentName] =
-        entity._components[componentName];
-      delete entity._components[componentName];
-    }
-
-    // Check each indexed query to see if we need to remove it
-    this._queryManager.onEntityComponentRemoved(entity, Component);
-
-    if (Component.__proto__ === SystemStateComponent) {
-      this.numStateComponents--;
-
-      // Check if the entity was a ghost waiting for the last system state component to be removed
-      if (this.numStateComponents === 0 && !entity.alive) {
-        entity.remove();
-      }
-    }
+  onComponentAdded() {
+    
   }
 
-  _entityRemoveComponentSync(entity, Component, index) {
-    // Remove T listing on entity and property ref, then free the component.
-    entity._ComponentTypes.splice(index, 1);
-    var componentName = Component.name;
-    var component = entity._components[componentName];
-    delete entity._components[componentName];
-    this.componentsManager._componentPool[componentName].release(component);
-    this.world.componentsManager.componentRemovedFromEntity(Component);
+  queueComponentRemoval() {
+
   }
 
-  /**
-   * Remove all the components from an entity
-   * @param {Entity} entity Entity from which the components will be removed
-   */
-  entityRemoveAllComponents(entity, immediately) {
-    let Components = entity._ComponentTypes;
+  queueEntityDisposal() {
 
-    for (let j = Components.length - 1; j >= 0; j--) {
-      if (Components[j].__proto__ !== SystemStateComponent)
-        this.entityRemoveComponent(entity, Components[j], immediately);
-    }
-  }
-
-  /**
-   * Remove the entity from this manager. It will clear also its components
-   * @param {Entity} entity Entity to remove from the manager
-   * @param {Bool} immediately If you want to remove the component immediately instead of deferred (Default is false)
-   */
-  removeEntity(entity, immediately) {
-    var index = this._entities.indexOf(entity);
-
-    if (!~index) throw new Error("Tried to remove entity not in list");
-
-    entity.alive = false;
-
-    if (this.numStateComponents === 0) {
-      // Remove from entity list
-      this.eventDispatcher.dispatchEvent(ENTITY_REMOVED, entity);
-      this._queryManager.onEntityRemoved(entity);
-      if (immediately === true) {
-        this._releaseEntity(entity, index);
-      } else {
-        this.entitiesToRemove.push(entity);
-      }
-    }
-
-    this.entityRemoveAllComponents(entity, immediately);
-  }
-
-  _releaseEntity(entity, index) {
-    this._entities.splice(index, 1);
-
-    // Prevent any access and free
-    entity._world = null;
-    this._entityPool.release(entity);
-  }
-
-  /**
-   * Remove all entities from this manager
-   */
-  removeAllEntities() {
-    for (var i = this._entities.length - 1; i >= 0; i--) {
-      this.removeEntity(this._entities[i]);
-    }
   }
 
   processDeferredRemoval() {

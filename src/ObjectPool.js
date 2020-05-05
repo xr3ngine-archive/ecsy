@@ -28,7 +28,9 @@ export default class ObjectPool {
 
   expand(count) {
     for (var n = 0; n < count; n++) {
-      this.freeList.push(this.baseObject.clone(true));
+      const clone = this.baseObject.clone();
+      clone._pool = this;
+      this.freeList.push(clone);
     }
     this.count += count;
   }

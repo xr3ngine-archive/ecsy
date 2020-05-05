@@ -23,8 +23,13 @@ export class World {
     this.lastTime = performance.now();
   }
 
-  registerComponent(Component) {
-    this.componentsManager.registerComponent(Component);
+  registerEntityType(EntityType, entityPool) {
+    this.entityManager.registerEntityType(EntityType, entityPool);
+    return this;
+  }
+
+  registerComponent(Component, objectPool) {
+    this.componentsManager.registerComponent(Component, objectPool);
     return this;
   }
 
@@ -62,8 +67,20 @@ export class World {
     this.enabled = true;
   }
 
-  createEntity(name) {
-    return this.entityManager.createEntity(name);
+  createEntity(EntityType, ...args) {
+    return this.entityManager.createEntity(EntityType, ...args);
+  }
+
+  createDetachedEntity(EntityType, ...args) {
+    return this.entityManager.createDetachedEntity(EntityType, ...args);
+  }
+
+  createComponent(Component, ...args) {
+    return this.componentsManager.createComponent(Component, ...args);
+  }
+
+  addEntity(entity) {
+    return this.entityManager.addEntity(entity);
   }
 
   stats() {
