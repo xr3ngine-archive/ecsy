@@ -6,3 +6,5 @@ export { TagComponent } from "./TagComponent.js";
 export { Types } from "./StandardTypes.js";
 export { Version } from "./Version.js";
 export { enableRemoteDevtools } from "./RemoteDevTools/index.js";
+export { ObjectPool } from "./ObjectPool.js";
+export { EntityState } from "./Entity.js";

@@ -19,7 +19,7 @@ const DEBUG = false;
 
  export const EntityState = {
    detached: "detached",
-   alive: "alive",
+   active: "active",
    removed: "removed",
    dead: "dead"
  };
@@ -32,10 +32,10 @@ export class Entity {
     this.uuid = generateUUID();
 
     // List of components types the entity has
-    this._ComponentTypes = [];
+    this.componentTypes = [];
 
     // Instance of the components
-    this._components = {};
+    this.components = {};
 
     this._componentsToRemove = {};
 
@@ -43,9 +43,9 @@ export class Entity {
     this.queries = [];
 
     // Used for deferred removal
-    this._ComponentTypesToRemove = [];
+    this._componentTypesToRemove = [];
 
-    this.state = EntityState.detached;
+    this.alive = false;
 
     this._numSystemStateComponents = 0;
   }
@@ -53,7 +53,7 @@ export class Entity {
   // COMPONENTS
 
   getComponent(Component, includeRemoved) {
-    var component = this._components[Component.name];
+    var component = this.components[Component.name];
 
     if (!component && includeRemoved === true) {
       component = this._componentsToRemove[Component.name];
@@ -67,7 +67,7 @@ export class Entity {
   }
 
   getComponents() {
-    return this._components;
+    return this.components;
   }
 
   getComponentsToRemove() {
@@ -75,13 +75,13 @@ export class Entity {
   }
 
   getComponentTypes() {
-    return this._ComponentTypes;
+    return this.componentTypes;
   }
 
   getMutableComponent(Component) {
-    var component = this._components[Component.name];
+    var component = this.components[Component.name];
 
-    if (this.state === EntityState.alive) {
+    if (this.alive) {
       for (var i = 0; i < this.queries.length; i++) {
         var query = this.queries[i];
         // @todo accelerate this check. Maybe having query._Components as an object
@@ -98,29 +98,29 @@ export class Entity {
     return component;
   }
 
-  addComponent(Component, values) {
-    if (~this._ComponentTypes.indexOf(Component)) return;
+  addComponent(Component, props) {
+    if (~this.componentTypes.indexOf(Component)) return;
 
-    this._ComponentTypes.push(Component);
+    this.componentTypes.push(Component);
 
     if (Component.isSystemStateComponent) {
-      this._numStateComponents++;
+      this._numSystemStateComponents++;
     }
 
-    var componentPool = this.world.componentsManager.getComponentsPool(
+    var componentPool = this.world.getComponentPool(
       Component
     );
 
     var component = componentPool.acquire();
 
-    this._components[Component.name] = component;
+    this.components[Component.name] = component;
 
-    if (values) {
-      component.copy(values);
+    if (props) {
+      component.copy(props);
     }
 
-    if (this.state === EntityState.alive) {
-      this.world.entityManager.onComponentAdded(this, Component, values);
+    if (this.alive) {
+      this.world.onComponentAdded(this, Component);
     }
 
     return this;
@@ -128,13 +128,13 @@ export class Entity {
 
   hasComponent(Component, includeRemoved) {
     return (
-      !!~this._ComponentTypes.indexOf(Component) ||
+      !!~this.componentTypes.indexOf(Component) ||
       (includeRemoved === true && this.hasRemovedComponent(Component))
     );
   }
 
   hasRemovedComponent(Component) {
-    return !!~this._ComponentTypesToRemove.indexOf(Component);
+    return !!~this._componentTypesToRemove.indexOf(Component);
   }
 
   hasAllComponents(Components) {
@@ -153,19 +153,19 @@ export class Entity {
 
   removeComponent(Component, immediately) {
     const componentName = Component.name;
-    const component = this._components[componentName];
+    const component = this.components[componentName];
 
     if (!component) {
       return false;
     }
 
     if (!this._componentsToRemove[componentName]) {
-      delete this._components[componentName];
+      delete this.components[componentName];
 
-      const index = this._ComponentTypes.findIndex(Component);
-      this._ComponentTypes.splice(index, 1);
+      const index = this.componentTypes.findIndex(Component);
+      this.componentTypes.splice(index, 1);
 
-      this.world.entityManager._queryManager.onEntityComponentRemoved(this, Component);
+      this.world.onRemoveComponent(this, Component);
     }
     
 
@@ -174,22 +174,20 @@ export class Entity {
 
       if (this._componentsToRemove[componentName]) {
         delete this._componentsToRemove[componentName];
-        const index = this._ComponentTypesToRemove.findIndex(Component);
-        this._ComponentTypesToRemove.splice(index, 1);
+        const index = this._componentTypesToRemove.findIndex(Component);
+        this._componentTypesToRemove.splice(index, 1);
       }
-
-      this.world.componentsManager.componentRemovedFromEntity(Component);
     } else {
-      this._ComponentTypesToRemove.push(Component);
+      this._componentTypesToRemove.push(Component);
       this._componentsToRemove[componentName] = component;
-      this.world.entityManager.queueComponentRemoval(this, Component);
+      this.world.queueComponentRemoval(this, Component);
     }
 
     if (Component.isSystemStateComponent) {
-      this._numStateComponents--;
+      this._numSystemStateComponents--;
 
       // Check if the entity was a ghost waiting for the last system state component to be removed
-      if (this._numStateComponents === 0 && !entity.alive) {
+      if (this._numSystemStateComponents === 0 && !entity.alive) {
         this.dispose();
       }
     }
@@ -197,8 +195,15 @@ export class Entity {
     return true;
   }
 
+  processRemovedComponents() {
+    while (this.componentTypesToRemove.length > 0) {
+      let Component = this.componentTypesToRemove.pop();
+      this.removeComponent(Component, true);
+    }
+  }
+
   removeAllComponents(immediately) {
-    let Components = entity._ComponentTypes;
+    let Components = entity.componentTypes;
 
     for (let j = Components.length - 1; j >= 0; j--) {
       this.removeComponent(Components[j], immediately);
@@ -207,10 +212,10 @@ export class Entity {
 
   copy(source) {
     // DISCUSS: Should we reset ComponentTypes and components here or in dispose?
-    for (const componentName in source._components) {
-      const sourceComponent = source._components[componentName];
-      this._components[componentName] = sourceComponent.clone();
-      this._ComponentTypes.push(sourceComponent.constructor)
+    for (const componentName in source.components) {
+      const sourceComponent = source.components[componentName];
+      this.components[componentName] = sourceComponent.clone();
+      this.componentTypes.push(sourceComponent.constructor)
     }
 
     return this;
@@ -221,17 +226,21 @@ export class Entity {
   }
 
   dispose(immediately) {
+    if (this.alive) {
+      this.world.onDisposeEntity(this);
+    }
+
     if (immediately) {
-      this.uuid = generateUUID();;
-      this.state = EntityState.dead;
+      this.uuid = generateUUID();
+      this.alive = true;
 
       for (let i = 0; i < this.queries.length; i++) {
         this.queries[i].removeEntity(this);
       }
 
-      for (const componentName in this._components) {
-        this._components[componentName].dispose();
-        delete this._components[componentName];
+      for (const componentName in this.components) {
+        this.components[componentName].dispose();
+        delete this.components[componentName];
       }
 
       for (const componentName in this._componentsToRemove) {
@@ -239,17 +248,17 @@ export class Entity {
       }
 
       this.queries.length = 0;
-      this._ComponentTypes.length = 0;
-      this._ComponentTypesToRemove.length = 0;
+      this.componentTypes.length = 0;
+      this._componentTypesToRemove.length = 0;
 
       if (this._pool) {
         this._pool.release(this);
       }
 
-      this.world.entityManager.onEntityDisposed(this);
+      this.world.onEntityDisposed(this);
     } else {
-      this.state = EntityState.removed;
-      this.world.entityManager.queueEntityDisposal(this);
+      this.alive = false;
+      this.world.queueEntityDisposal(this);
     }
   }
 }

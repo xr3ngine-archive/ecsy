@@ -42,7 +42,7 @@ export class System {
         if (!Components || Components.length === 0) {
           throw new Error("'components' attribute can't be empty in a query");
         }
-        var query = this.world.entityManager.queryComponents(Components);
+        var query = this.world.getQuery(Components);
         this._queries[queryName] = query;
         if (queryConfig.mandatory === true) {
           this._mandatoryQueries.push(query);

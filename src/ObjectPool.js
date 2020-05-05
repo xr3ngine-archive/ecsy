@@ -1,4 +1,4 @@
-export default class ObjectPool {
+export class ObjectPool {
   constructor(baseObject, initialSize) {
     this.freeList = [];
     this.count = 0;

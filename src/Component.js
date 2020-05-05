@@ -1,5 +1,3 @@
-import { Entity } from "./Entity";
-
 // TODO: The default clone and copy can be made faster by
 // generating clone/copy functions at Component registration time
 export class Component {

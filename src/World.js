@@ -1,17 +1,36 @@
 import { SystemManager } from "./SystemManager.js";
-import { EntityManager } from "./EntityManager.js";
-import { ComponentManager } from "./ComponentManager.js";
 import { Version } from "./Version.js";
+import EventDispatcher from "./EventDispatcher.js";
+import { Entity } from "./Entity.js";
+import { ObjectPool } from "./ObjectPool.js";
+import Query from "./Query.js";
+import { queryKey } from "./Utils.js";
 
-export class World {
+export const ENTITY_CREATED = "ENTITY_CREATED";
+export const ENTITY_REMOVED = "ENTITY_REMOVED";
+export const COMPONENT_ADDED = "COMPONENT_ADDED";
+export const COMPONENT_REMOVED = "COMPONENT_REMOVED";
+
+export class World extends EventDispatcher {
   constructor() {
-    this.componentsManager = new ComponentManager(this);
-    this.entityManager = new EntityManager(this);
     this.systemManager = new SystemManager(this);
 
-    this.enabled = true;
+    this.entityPool = new ObjectPool(new Entity(this));
 
-    this.eventQueues = {};
+    this.entities = [];
+    this.entitiesByUUID = {};
+
+    this.entitiesWithComponentsToRemove = []; 
+    this.entitiesToRemove = [];
+    this.deferredRemovalEnabled = true;
+
+    this.componentTypes = {};
+    this.componentPools = {};
+    this.componentCounts = {};
+
+    this.queries = {};
+
+    this.enabled = true;
 
     if (typeof CustomEvent !== "undefined") {
       var event = new CustomEvent("ecsy-world-created", {
@@ -23,13 +42,23 @@ export class World {
     this.lastTime = performance.now();
   }
 
-  registerEntityType(EntityType, entityPool) {
-    this.entityManager.registerEntityType(EntityType, entityPool);
-    return this;
-  }
-
   registerComponent(Component, objectPool) {
-    this.componentsManager.registerComponent(Component, objectPool);
+    if (this.componentTypes[Component.name]) {
+      console.warn(`Component type: '${Component.name}' already registered.`);
+      return;
+    }
+
+    this.componentTypes[Component.name] = Component;
+    this.componentCounts[Component.name] = 0;
+
+    if (objectPool === false) {
+      objectPool = null;
+    } else if (objectPool === undefined) {
+      objectPool = new ObjectPool(new Component());
+    }
+
+    this.componentPools[Component.name] = objectPool;
+
     return this;
   }
 
@@ -38,12 +67,157 @@ export class World {
     return this;
   }
 
+  createEntity() {
+    const entity = this.createDetachedEntity();
+    return this.addEntity(entity)
+  }
+
+  createDetachedEntity() {
+    return this.entityPool.acquire();
+  }
+
+  addEntity(entity) {
+    if (this.entitiesByUUID[entity.uuid])  {
+      console.warn(`Entity ${entity.uuid} already added.`);
+      return entity;
+    }
+
+    this.entitiesByUUID[entity.uuid] = entity;
+    this.entities.push(entity);
+    entity.alive = true;
+    this.dispatchEvent(ENTITY_CREATED, entity);
+
+    return entity;
+  }
+
+  getEntityByUUID(uuid) {
+    return this.entitiesByUUID[uuid];
+  }
+
+  createComponent(Component) {
+    const componentPool = this.componentPools[Component.name];
+    return componentPool.acquire();
+  }
+
+  getComponentPool(Component) {
+    return this.componentPools[Component.name];
+  }
+
   getSystem(SystemClass) {
     return this.systemManager.getSystem(SystemClass);
   }
 
   getSystems() {
     return this.systemManager.getSystems();
+  }
+
+  getQuery(Components) {
+    const key = queryKey(Components);
+    const query = this.queries[key];
+
+    if (!query) {
+      this.queries[key] = query = new Query(Components, this);
+    }
+
+    return query;
+  }
+
+  onComponentAdded(entity, Component) {
+    if (!this.componentTypes[Component.name]) {
+      console.warn(`Component ${Component.name} not registered.`);
+    }
+
+    this.componentCounts[Component.name]++;
+
+    // Check each indexed query to see if we need to add this entity to the list
+    for (var queryName in this.queries) {
+      var query = this.queries[queryName];
+
+      if (
+        !!~query.NotComponents.indexOf(Component) &&
+        ~query.entities.indexOf(entity)
+      ) {
+        query.removeEntity(entity);
+        continue;
+      }
+
+      // Add the entity only if:
+      // Component is in the query
+      // and Entity has ALL the components of the query
+      // and Entity is not already in the query
+      if (
+        !~query.Components.indexOf(Component) ||
+        !query.match(entity) ||
+        ~query.entities.indexOf(entity)
+      )
+        continue;
+
+      query.addEntity(entity);
+    }
+
+    this.dispatchEvent(COMPONENT_ADDED, entity, Component);
+  }
+
+  queueComponentRemoval() {
+    const index = this.entitiesWithComponentsToRemove.indexOf(entity);
+
+    if (index !== -1) {
+      this.entitiesWithComponentsToRemove.push(entity);
+    }
+  }
+
+  onRemoveComponent(Component) {
+    this.componentCounts[Component.name]--;
+
+    for (var queryName in this.queries) {
+      var query = this.queries[queryName];
+
+      if (
+        !!~query.NotComponents.indexOf(Component) &&
+        !~query.entities.indexOf(entity) &&
+        query.match(entity)
+      ) {
+        query.addEntity(entity);
+        continue;
+      }
+
+      if (
+        !!~query.Components.indexOf(Component) &&
+        !!~query.entities.indexOf(entity) &&
+        !query.match(entity)
+      ) {
+        query.removeEntity(entity);
+        continue;
+      }
+    }
+  }
+
+  queueEntityDisposal(entity) {
+    this.entitiesToRemove.push(entity);
+  }
+
+  onDisposeEntity() {
+    for (var queryName in this.queries) {
+      const query = this.queries[queryName];
+
+      if (entity.queries.indexOf(query) !== -1) {
+        query.removeEntity(entity);
+      }
+    }
+  }
+
+  onEntityDisposed(entity) {
+    if (!this.entitiesByUUID[entity.uuid]) {
+      return;
+    }
+
+    delete this.entitiesByUUID[entity.uuid];
+
+    const index = this.entities.indexOf(entity);
+
+    if (index !== -1) {
+      this.entities.splice(index, 1);
+    }
   }
 
   execute(delta, time) {
@@ -55,7 +229,24 @@ export class World {
 
     if (this.enabled) {
       this.systemManager.execute(delta, time);
-      this.entityManager.processDeferredRemoval();
+      
+      if (!this.deferredRemovalEnabled) {
+        return;
+      }
+  
+      for (let i = 0; i < this.entitiesToRemove.length; i++) {
+        let entity = this.entitiesToRemove[i];
+        entity.dispose(true);
+      }
+  
+      this.entitiesToRemove.length = 0;
+  
+      for (let i = 0; i < this.entitiesWithComponentsToRemove.length; i++) {
+        let entity = this.entitiesWithComponentsToRemove[i];
+        entity.processRemovedComponents();
+      }
+  
+      this.entitiesWithComponentsToRemove.length = 0;
     }
   }
 
@@ -67,27 +258,31 @@ export class World {
     this.enabled = true;
   }
 
-  createEntity(EntityType, ...args) {
-    return this.entityManager.createEntity(EntityType, ...args);
-  }
-
-  createDetachedEntity(EntityType, ...args) {
-    return this.entityManager.createDetachedEntity(EntityType, ...args);
-  }
-
-  createComponent(Component, ...args) {
-    return this.componentsManager.createComponent(Component, ...args);
-  }
-
-  addEntity(entity) {
-    return this.entityManager.addEntity(entity);
-  }
-
   stats() {
     var stats = {
-      entities: this.entityManager.stats(),
+      entities: {
+        numEntities: this.entities.length,
+        numQueries: Object.keys(this.queries).length,
+        queries: {},
+        numComponentPool: Object.keys(this.componentPools).length,
+        componentPool: {},
+        eventDispatcher: super.stats()
+      },
       system: this.systemManager.stats()
     };
+
+    for (const queryName in this.queries) {
+      stats.queries[queryName] = this.queries[queryName].stats();
+    }
+
+    for (const componentName in this.componentPools) {
+      const pool = this.componentPools[componentName];
+
+      stats.componentPool[componentName] = {
+        used: pool.totalUsed(),
+        size: pool.count
+      };
+    }
 
     console.log(JSON.stringify(stats, null, 2));
   }
