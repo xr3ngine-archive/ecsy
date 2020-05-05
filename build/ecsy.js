@@ -332,7 +332,7 @@
 	  /**
 	   * @param {Array(Component)} Components List of types of components to query
 	   */
-	  constructor(Components, manager) {
+	  constructor(Components, world) {
 	    this.Components = [];
 	    this.NotComponents = [];
 
@@ -358,8 +358,8 @@
 	    this.key = queryKey(Components);
 
 	    // Fill the query with the existing entities
-	    for (var i = 0; i < manager._entities.length; i++) {
-	      var entity = manager._entities[i];
+	    for (var i = 0; i < world.entities.length; i++) {
+	      var entity = world.entities[i];
 	      if (this.match(entity)) {
 	        // @todo ??? this.addEntity(entity); => preventing the event to be generated
 	        entity.queries.push(this);
