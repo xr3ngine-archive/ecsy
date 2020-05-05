@@ -13,6 +13,8 @@ export const COMPONENT_REMOVED = "COMPONENT_REMOVED";
 
 export class World extends EventDispatcher {
   constructor() {
+    super();
+
     this.systemManager = new SystemManager(this);
 
     this.entityPool = new ObjectPool(new Entity(this));
