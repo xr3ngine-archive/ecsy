@@ -745,6 +745,8 @@
 
 	class World extends EventDispatcher {
 	  constructor() {
+	    super();
+
 	    this.systemManager = new SystemManager(this);
 
 	    this.entityPool = new ObjectPool(new Entity(this));
