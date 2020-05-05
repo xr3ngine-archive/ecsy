@@ -100,6 +100,106 @@
 	  }
 	}
 
+	var name = "ecsy";
+	var version = "0.2.2";
+	var description = "Entity Component System in JS";
+	var main = "build/ecsy.js";
+	var module = "build/ecsy.module.js";
+	var types = "src/index.d.ts";
+	var scripts = {
+		build: "rollup -c && npm run docs",
+		docs: "rm docs/api/_sidebar.md; typedoc --readme none --mode file --excludeExternals --plugin typedoc-plugin-markdown  --theme docs/theme --hideSources --hideBreadcrumbs --out docs/api/ --includeDeclarations --includes 'src/**/*.d.ts' src; touch docs/api/_sidebar.md",
+		"dev:docs": "nodemon -e ts -x 'npm run docs' -w src",
+		dev: "concurrently --names 'ROLLUP,DOCS,HTTP' -c 'bgBlue.bold,bgYellow.bold,bgGreen.bold' 'rollup -c -w -m inline' 'npm run dev:docs' 'npm run dev:server'",
+		"dev:server": "http-server -c-1 -p 8080 --cors",
+		lint: "eslint src test examples",
+		start: "npm run dev",
+		test: "ava",
+		travis: "npm run lint && npm run test && npm run build",
+		"watch:test": "ava --watch"
+	};
+	var repository = {
+		type: "git",
+		url: "git+https://github.com/fernandojsg/ecsy.git"
+	};
+	var keywords = [
+		"ecs",
+		"entity component system"
+	];
+	var author = "Fernando Serrano <fernandojsg@gmail.com> (http://fernandojsg.com)";
+	var license = "MIT";
+	var bugs = {
+		url: "https://github.com/fernandojsg/ecsy/issues"
+	};
+	var ava = {
+		files: [
+			"test/**/*.test.js"
+		],
+		sources: [
+			"src/**/*.js"
+		],
+		require: [
+			"babel-register",
+			"esm"
+		]
+	};
+	var jspm = {
+		files: [
+			"package.json",
+			"LICENSE",
+			"README.md",
+			"build/ecsy.js",
+			"build/ecsy.min.js",
+			"build/ecsy.module.js"
+		],
+		directories: {
+		}
+	};
+	var homepage = "https://github.com/fernandojsg/ecsy#readme";
+	var devDependencies = {
+		ava: "^1.4.1",
+		"babel-cli": "^6.26.0",
+		"babel-core": "^6.26.3",
+		"babel-eslint": "^10.0.3",
+		"babel-loader": "^8.0.6",
+		concurrently: "^4.1.2",
+		"docsify-cli": "^4.4.0",
+		eslint: "^5.16.0",
+		"eslint-config-prettier": "^4.3.0",
+		"eslint-plugin-prettier": "^3.1.2",
+		"http-server": "^0.11.1",
+		nodemon: "^1.19.4",
+		prettier: "^1.19.1",
+		rollup: "^1.29.0",
+		"rollup-plugin-json": "^4.0.0",
+		"rollup-plugin-terser": "^5.2.0",
+		typedoc: "^0.15.8",
+		"typedoc-plugin-markdown": "^2.2.16",
+		typescript: "^3.7.5"
+	};
+	var pjson = {
+		name: name,
+		version: version,
+		description: description,
+		main: main,
+		"jsnext:main": "build/ecsy.module.js",
+		module: module,
+		types: types,
+		scripts: scripts,
+		repository: repository,
+		keywords: keywords,
+		author: author,
+		license: license,
+		bugs: bugs,
+		ava: ava,
+		jspm: jspm,
+		homepage: homepage,
+		devDependencies: devDependencies
+	};
+
+	// TODO: Inject this into the build instead of including the package.json
+	const Version = pjson.version;
+
 	/**
 	 * @private
 	 * @class EventDispatcher
@@ -184,24 +284,6 @@
 	}
 
 	/**
-	 * Return the name of a component
-	 * @param {Component} Component
-	 * @private
-	 */
-	function getName(Component) {
-	  return Component.name;
-	}
-
-	/**
-	 * Return a valid property name for the Component
-	 * @param {Component} Component
-	 * @private
-	 */
-	function componentPropertyName(Component) {
-	  return getName(Component);
-	}
-
-	/**
 	 * Get a key from a list of components
 	 * @param {Array(Component)} Components Array of components to generate the key
 	 * @private
@@ -212,13 +294,38 @@
 	    var T = Components[n];
 	    if (typeof T === "object") {
 	      var operator = T.operator === "not" ? "!" : T.operator;
-	      names.push(operator + getName(T.Component));
+	      names.push(operator + T.Component.name);
 	    } else {
-	      names.push(getName(T));
+	      names.push(T.name);
 	    }
 	  }
 
 	  return names.sort().join("-");
+	}
+
+	let _lut = [];
+
+	for ( let i = 0; i < 256; i ++ ) {
+
+		_lut[ i ] = ( i < 16 ? '0' : '' ) + ( i ).toString( 16 );
+
+	}
+
+	// https://github.com/mrdoob/three.js/blob/dev/src/math/MathUtils.js#L21
+	function generateUUID() {
+	  // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript/21963136#21963136
+
+	  let d0 = Math.random() * 0xffffffff | 0;
+	  let d1 = Math.random() * 0xffffffff | 0;
+	  let d2 = Math.random() * 0xffffffff | 0;
+	  let d3 = Math.random() * 0xffffffff | 0;
+	  let uuid = _lut[ d0 & 0xff ] + _lut[ d0 >> 8 & 0xff ] + _lut[ d0 >> 16 & 0xff ] + _lut[ d0 >> 24 & 0xff ] + '-' +
+	    _lut[ d1 & 0xff ] + _lut[ d1 >> 8 & 0xff ] + '-' + _lut[ d1 >> 16 & 0x0f | 0x40 ] + _lut[ d1 >> 24 & 0xff ] + '-' +
+	    _lut[ d2 & 0x3f | 0x80 ] + _lut[ d2 >> 8 & 0xff ] + '-' + _lut[ d2 >> 16 & 0xff ] + _lut[ d2 >> 24 & 0xff ] +
+	    _lut[ d3 & 0xff ] + _lut[ d3 >> 8 & 0xff ] + _lut[ d3 >> 16 & 0xff ] + _lut[ d3 >> 24 & 0xff ];
+
+	  // .toUpperCase() here flattens concatenated strings to save heap memory space.
+	  return uuid.toUpperCase();
 	}
 
 	class Query {
@@ -325,20 +432,37 @@
 	Query.prototype.ENTITY_REMOVED = "Query#ENTITY_REMOVED";
 	Query.prototype.COMPONENT_CHANGED = "Query#COMPONENT_CHANGED";
 
-	var nextId = 0;
+	/**
+	 * Entity Lifecycle
+	 * - detached: alive = false, not in deferred entity removal array,
+	 *    not in an object pool free list, and not included in query results.
+	 * - alive: alive = true, not in deferred entity removal array,
+	 *    not in an object pool free list, and can be included in query results.
+	 * - removed: alive = false, in the deferred entity removal array,
+	 *    not in an object pool free list, and only included in removed event query results.
+	 * - dead: alive = false, not in the deferred entity removal array,
+	 *    and in an object pool free list, and not included in any query results.
+	 */
+
+	 const EntityState = {
+	   detached: "detached",
+	   active: "active",
+	   removed: "removed",
+	   dead: "dead"
+	 };
 
 	class Entity {
 	  constructor(world) {
-	    this._world = world || null;
+	    this.world = world;
 
 	    // Unique ID for this entity
-	    this.id = nextId++;
+	    this.uuid = generateUUID();
 
 	    // List of components types the entity has
-	    this._ComponentTypes = [];
+	    this.componentTypes = [];
 
 	    // Instance of the components
-	    this._components = {};
+	    this.components = {};
 
 	    this._componentsToRemove = {};
 
@@ -346,15 +470,17 @@
 	    this.queries = [];
 
 	    // Used for deferred removal
-	    this._ComponentTypesToRemove = [];
+	    this._componentTypesToRemove = [];
 
 	    this.alive = false;
+
+	    this._numSystemStateComponents = 0;
 	  }
 
 	  // COMPONENTS
 
 	  getComponent(Component, includeRemoved) {
-	    var component = this._components[Component.name];
+	    var component = this.components[Component.name];
 
 	    if (!component && includeRemoved === true) {
 	      component = this._componentsToRemove[Component.name];
@@ -368,7 +494,7 @@
 	  }
 
 	  getComponents() {
-	    return this._components;
+	    return this.components;
 	  }
 
 	  getComponentsToRemove() {
@@ -376,44 +502,66 @@
 	  }
 
 	  getComponentTypes() {
-	    return this._ComponentTypes;
+	    return this.componentTypes;
 	  }
 
 	  getMutableComponent(Component) {
-	    var component = this._components[Component.name];
-	    for (var i = 0; i < this.queries.length; i++) {
-	      var query = this.queries[i];
-	      // @todo accelerate this check. Maybe having query._Components as an object
-	      if (query.reactive && query.Components.indexOf(Component) !== -1) {
-	        query.eventDispatcher.dispatchEvent(
-	          Query.prototype.COMPONENT_CHANGED,
-	          this,
-	          component
-	        );
+	    var component = this.components[Component.name];
+
+	    if (this.alive) {
+	      for (var i = 0; i < this.queries.length; i++) {
+	        var query = this.queries[i];
+	        // @todo accelerate this check. Maybe having query._Components as an object
+	        if (query.reactive && query.Components.indexOf(Component) !== -1) {
+	          query.eventDispatcher.dispatchEvent(
+	            Query.prototype.COMPONENT_CHANGED,
+	            this,
+	            component
+	          );
+	        }
 	      }
 	    }
+
 	    return component;
 	  }
 
-	  addComponent(Component, values) {
-	    this._world.entityAddComponent(this, Component, values);
-	    return this;
-	  }
+	  addComponent(Component, props) {
+	    if (~this.componentTypes.indexOf(Component)) return;
 
-	  removeComponent(Component, forceRemove) {
-	    this._world.entityRemoveComponent(this, Component, forceRemove);
+	    this.componentTypes.push(Component);
+
+	    if (Component.isSystemStateComponent) {
+	      this._numSystemStateComponents++;
+	    }
+
+	    var componentPool = this.world.getComponentPool(
+	      Component
+	    );
+
+	    var component = componentPool.acquire();
+
+	    this.components[Component.name] = component;
+
+	    if (props) {
+	      component.copy(props);
+	    }
+
+	    if (this.alive) {
+	      this.world.onComponentAdded(this, Component);
+	    }
+
 	    return this;
 	  }
 
 	  hasComponent(Component, includeRemoved) {
 	    return (
-	      !!~this._ComponentTypes.indexOf(Component) ||
+	      !!~this.componentTypes.indexOf(Component) ||
 	      (includeRemoved === true && this.hasRemovedComponent(Component))
 	    );
 	  }
 
 	  hasRemovedComponent(Component) {
-	    return !!~this._ComponentTypesToRemove.indexOf(Component);
+	    return !!~this._componentTypesToRemove.indexOf(Component);
 	  }
 
 	  hasAllComponents(Components) {
@@ -430,54 +578,131 @@
 	    return false;
 	  }
 
-	  removeAllComponents(forceRemove) {
-	    return this._world.entityRemoveAllComponents(this, forceRemove);
+	  removeComponent(Component, immediately) {
+	    const componentName = Component.name;
+	    const component = this.components[componentName];
+
+	    if (!component) {
+	      return false;
+	    }
+
+	    if (!this._componentsToRemove[componentName]) {
+	      delete this.components[componentName];
+
+	      const index = this.componentTypes.findIndex(Component);
+	      this.componentTypes.splice(index, 1);
+
+	      this.world.onRemoveComponent(this, Component);
+	    }
+	    
+
+	    if (immediately) {
+	      component.dispose();
+
+	      if (this._componentsToRemove[componentName]) {
+	        delete this._componentsToRemove[componentName];
+	        const index = this._componentTypesToRemove.findIndex(Component);
+	        this._componentTypesToRemove.splice(index, 1);
+	      }
+	    } else {
+	      this._componentTypesToRemove.push(Component);
+	      this._componentsToRemove[componentName] = component;
+	      this.world.queueComponentRemoval(this, Component);
+	    }
+
+	    if (Component.isSystemStateComponent) {
+	      this._numSystemStateComponents--;
+
+	      // Check if the entity was a ghost waiting for the last system state component to be removed
+	      if (this._numSystemStateComponents === 0 && !entity.alive) {
+	        this.dispose();
+	      }
+	    }
+
+	    return true;
 	  }
 
-	  // EXTRAS
-
-	  // Initialize the entity. To be used when returning an entity to the pool
-	  reset() {
-	    this.id = nextId++;
-	    this._world = null;
-	    this._ComponentTypes.length = 0;
-	    this.queries.length = 0;
-	    this._components = {};
+	  processRemovedComponents() {
+	    while (this.componentTypesToRemove.length > 0) {
+	      let Component = this.componentTypesToRemove.pop();
+	      this.removeComponent(Component, true);
+	    }
 	  }
 
-	  remove(forceRemove) {
-	    return this._world.removeEntity(this, forceRemove);
+	  removeAllComponents(immediately) {
+	    let Components = entity.componentTypes;
+
+	    for (let j = Components.length - 1; j >= 0; j--) {
+	      this.removeComponent(Components[j], immediately);
+	    }
+	  }
+
+	  copy(source) {
+	    // DISCUSS: Should we reset ComponentTypes and components here or in dispose?
+	    for (const componentName in source.components) {
+	      const sourceComponent = source.components[componentName];
+	      this.components[componentName] = sourceComponent.clone();
+	      this.componentTypes.push(sourceComponent.constructor);
+	    }
+
+	    return this;
+	  }
+
+	  clone() {
+	    return new this.constructor(this.world).copy(this);
+	  }
+
+	  dispose(immediately) {
+	    if (this.alive) {
+	      this.world.onDisposeEntity(this);
+	    }
+
+	    if (immediately) {
+	      this.uuid = generateUUID();
+	      this.alive = true;
+
+	      for (let i = 0; i < this.queries.length; i++) {
+	        this.queries[i].removeEntity(this);
+	      }
+
+	      for (const componentName in this.components) {
+	        this.components[componentName].dispose();
+	        delete this.components[componentName];
+	      }
+
+	      for (const componentName in this._componentsToRemove) {
+	        delete this._componentsToRemove[componentName];
+	      }
+
+	      this.queries.length = 0;
+	      this.componentTypes.length = 0;
+	      this._componentTypesToRemove.length = 0;
+
+	      if (this._pool) {
+	        this._pool.release(this);
+	      }
+
+	      this.world.onEntityDisposed(this);
+	    } else {
+	      this.alive = false;
+	      this.world.queueEntityDisposal(this);
+	    }
 	  }
 	}
 
 	class ObjectPool {
-	  // @todo Add initial size
-	  constructor(T, initialSize) {
+	  constructor(baseObject, initialSize) {
 	    this.freeList = [];
 	    this.count = 0;
-	    this.T = T;
+	    this.baseObject = baseObject;
 	    this.isObjectPool = true;
-
-	    var extraArgs = null;
-	    if (arguments.length > 1) {
-	      extraArgs = Array.prototype.slice.call(arguments);
-	      extraArgs.shift();
-	    }
-
-	    this.createElement = extraArgs
-	      ? () => {
-	          return new T(...extraArgs);
-	        }
-	      : () => {
-	          return new T();
-	        };
 
 	    if (typeof initialSize !== "undefined") {
 	      this.expand(initialSize);
 	    }
 	  }
 
-	  aquire() {
+	  acquire() {
 	    // Grow the list by 20%ish if we're out
 	    if (this.freeList.length <= 0) {
 	      this.expand(Math.round(this.count * 0.2) + 1);
@@ -489,13 +714,15 @@
 	  }
 
 	  release(item) {
-	    item.reset();
+	    item.copy(this.baseObject);
 	    this.freeList.push(item);
 	  }
 
 	  expand(count) {
 	    for (var n = 0; n < count; n++) {
-	      this.freeList.push(this.createElement());
+	      const clone = this.baseObject.clone();
+	      clone._pool = this;
+	      this.freeList.push(clone);
 	    }
 	    this.count += count;
 	  }
@@ -513,38 +740,130 @@
 	  }
 	}
 
-	/**
-	 * @private
-	 * @class QueryManager
-	 */
-	class QueryManager {
-	  constructor(world) {
-	    this._world = world;
+	const ENTITY_CREATED = "ENTITY_CREATED";
+	const COMPONENT_ADDED = "COMPONENT_ADDED";
 
-	    // Queries indexed by a unique identifier for the components it has
-	    this._queries = {};
-	  }
+	class World extends EventDispatcher {
+	  constructor() {
+	    this.systemManager = new SystemManager(this);
 
-	  onEntityRemoved(entity) {
-	    for (var queryName in this._queries) {
-	      var query = this._queries[queryName];
-	      if (entity.queries.indexOf(query) !== -1) {
-	        query.removeEntity(entity);
-	      }
+	    this.entityPool = new ObjectPool(new Entity(this));
+
+	    this.entities = [];
+	    this.entitiesByUUID = {};
+
+	    this.entitiesWithComponentsToRemove = []; 
+	    this.entitiesToRemove = [];
+	    this.deferredRemovalEnabled = true;
+
+	    this.componentTypes = {};
+	    this.componentPools = {};
+	    this.componentCounts = {};
+
+	    this.queries = {};
+
+	    this.enabled = true;
+
+	    if (typeof CustomEvent !== "undefined") {
+	      var event = new CustomEvent("ecsy-world-created", {
+	        detail: { world: this, version: Version }
+	      });
+	      window.dispatchEvent(event);
 	    }
+
+	    this.lastTime = performance.now();
 	  }
 
-	  /**
-	   * Callback when a component is added to an entity
-	   * @param {Entity} entity Entity that just got the new component
-	   * @param {Component} Component Component added to the entity
-	   */
-	  onEntityComponentAdded(entity, Component) {
-	    // @todo Use bitmask for checking components?
+	  registerComponent(Component, objectPool) {
+	    if (this.componentTypes[Component.name]) {
+	      console.warn(`Component type: '${Component.name}' already registered.`);
+	      return;
+	    }
+
+	    this.componentTypes[Component.name] = Component;
+	    this.componentCounts[Component.name] = 0;
+
+	    if (objectPool === false) {
+	      objectPool = null;
+	    } else if (objectPool === undefined) {
+	      objectPool = new ObjectPool(new Component());
+	    }
+
+	    this.componentPools[Component.name] = objectPool;
+
+	    return this;
+	  }
+
+	  registerSystem(System, attributes) {
+	    this.systemManager.registerSystem(System, attributes);
+	    return this;
+	  }
+
+	  createEntity() {
+	    const entity = this.createDetachedEntity();
+	    return this.addEntity(entity)
+	  }
+
+	  createDetachedEntity() {
+	    return this.entityPool.acquire();
+	  }
+
+	  addEntity(entity) {
+	    if (this.entitiesByUUID[entity.uuid])  {
+	      console.warn(`Entity ${entity.uuid} already added.`);
+	      return entity;
+	    }
+
+	    this.entitiesByUUID[entity.uuid] = entity;
+	    this.entities.push(entity);
+	    entity.alive = true;
+	    this.dispatchEvent(ENTITY_CREATED, entity);
+
+	    return entity;
+	  }
+
+	  getEntityByUUID(uuid) {
+	    return this.entitiesByUUID[uuid];
+	  }
+
+	  createComponent(Component) {
+	    const componentPool = this.componentPools[Component.name];
+	    return componentPool.acquire();
+	  }
+
+	  getComponentPool(Component) {
+	    return this.componentPools[Component.name];
+	  }
+
+	  getSystem(SystemClass) {
+	    return this.systemManager.getSystem(SystemClass);
+	  }
+
+	  getSystems() {
+	    return this.systemManager.getSystems();
+	  }
+
+	  getQuery(Components) {
+	    const key = queryKey(Components);
+	    const query = this.queries[key];
+
+	    if (!query) {
+	      this.queries[key] = query = new Query(Components, this);
+	    }
+
+	    return query;
+	  }
+
+	  onComponentAdded(entity, Component) {
+	    if (!this.componentTypes[Component.name]) {
+	      console.warn(`Component ${Component.name} not registered.`);
+	    }
+
+	    this.componentCounts[Component.name]++;
 
 	    // Check each indexed query to see if we need to add this entity to the list
-	    for (var queryName in this._queries) {
-	      var query = this._queries[queryName];
+	    for (var queryName in this.queries) {
+	      var query = this.queries[queryName];
 
 	      if (
 	        !!~query.NotComponents.indexOf(Component) &&
@@ -567,16 +886,23 @@
 
 	      query.addEntity(entity);
 	    }
+
+	    this.dispatchEvent(COMPONENT_ADDED, entity, Component);
 	  }
 
-	  /**
-	   * Callback when a component is removed from an entity
-	   * @param {Entity} entity Entity to remove the component from
-	   * @param {Component} Component Component to remove from the entity
-	   */
-	  onEntityComponentRemoved(entity, Component) {
-	    for (var queryName in this._queries) {
-	      var query = this._queries[queryName];
+	  queueComponentRemoval() {
+	    const index = this.entitiesWithComponentsToRemove.indexOf(entity);
+
+	    if (index !== -1) {
+	      this.entitiesWithComponentsToRemove.push(entity);
+	    }
+	  }
+
+	  onRemoveComponent(Component) {
+	    this.componentCounts[Component.name]--;
+
+	    for (var queryName in this.queries) {
+	      var query = this.queries[queryName];
 
 	      if (
 	        !!~query.NotComponents.indexOf(Component) &&
@@ -598,525 +924,32 @@
 	    }
 	  }
 
-	  /**
-	   * Get a query for the specified components
-	   * @param {Component} Components Components that the query should have
-	   */
-	  getQuery(Components) {
-	    var key = queryKey(Components);
-	    var query = this._queries[key];
-	    if (!query) {
-	      this._queries[key] = query = new Query(Components, this._world);
-	    }
-	    return query;
+	  queueEntityDisposal(entity) {
+	    this.entitiesToRemove.push(entity);
 	  }
 
-	  /**
-	   * Return some stats from this class
-	   */
-	  stats() {
-	    var stats = {};
-	    for (var queryName in this._queries) {
-	      stats[queryName] = this._queries[queryName].stats();
-	    }
-	    return stats;
-	  }
-	}
+	  onDisposeEntity() {
+	    for (var queryName in this.queries) {
+	      const query = this.queries[queryName];
 
-	class SystemStateComponent {}
-
-	SystemStateComponent.isSystemStateComponent = true;
-
-	/**
-	 * @private
-	 * @class EntityManager
-	 */
-	class EntityManager {
-	  constructor(world) {
-	    this.world = world;
-	    this.componentsManager = world.componentsManager;
-
-	    // All the entities in this instance
-	    this._entities = [];
-
-	    this._entitiesByNames = {};
-
-	    this._queryManager = new QueryManager(this);
-	    this.eventDispatcher = new EventDispatcher();
-	    this._entityPool = new ObjectPool(Entity);
-
-	    // Deferred deletion
-	    this.entitiesWithComponentsToRemove = [];
-	    this.entitiesToRemove = [];
-	    this.deferredRemovalEnabled = true;
-
-	    this.numStateComponents = 0;
-	  }
-
-	  getEntityByName(name) {
-	    return this._entitiesByNames[name];
-	  }
-
-	  /**
-	   * Create a new entity
-	   */
-	  createEntity(name) {
-	    var entity = this._entityPool.aquire();
-	    entity.alive = true;
-	    entity.name = name || "";
-	    if (name) {
-	      if (this._entitiesByNames[name]) {
-	        console.warn(`Entity name '${name}' already exist`);
-	      } else {
-	        this._entitiesByNames[name] = entity;
-	      }
-	    }
-
-	    entity._world = this;
-	    this._entities.push(entity);
-	    this.eventDispatcher.dispatchEvent(ENTITY_CREATED, entity);
-	    return entity;
-	  }
-
-	  // COMPONENTS
-
-	  /**
-	   * Add a component to an entity
-	   * @param {Entity} entity Entity where the component will be added
-	   * @param {Component} Component Component to be added to the entity
-	   * @param {Object} values Optional values to replace the default attributes
-	   */
-	  entityAddComponent(entity, Component, values) {
-	    if (~entity._ComponentTypes.indexOf(Component)) return;
-
-	    entity._ComponentTypes.push(Component);
-
-	    if (Component.__proto__ === SystemStateComponent) {
-	      this.numStateComponents++;
-	    }
-
-	    var componentPool = this.world.componentsManager.getComponentsPool(
-	      Component
-	    );
-	    var component = componentPool.aquire();
-
-	    entity._components[Component.name] = component;
-
-	    if (values) {
-	      if (component.copy) {
-	        component.copy(values);
-	      } else {
-	        for (var name in values) {
-	          component[name] = values[name];
-	        }
-	      }
-	    }
-
-	    this._queryManager.onEntityComponentAdded(entity, Component);
-	    this.world.componentsManager.componentAddedToEntity(Component);
-
-	    this.eventDispatcher.dispatchEvent(COMPONENT_ADDED, entity, Component);
-	  }
-
-	  /**
-	   * Remove a component from an entity
-	   * @param {Entity} entity Entity which will get removed the component
-	   * @param {*} Component Component to remove from the entity
-	   * @param {Bool} immediately If you want to remove the component immediately instead of deferred (Default is false)
-	   */
-	  entityRemoveComponent(entity, Component, immediately) {
-	    var index = entity._ComponentTypes.indexOf(Component);
-	    if (!~index) return;
-
-	    this.eventDispatcher.dispatchEvent(COMPONENT_REMOVE, entity, Component);
-
-	    if (immediately) {
-	      this._entityRemoveComponentSync(entity, Component, index);
-	    } else {
-	      if (entity._ComponentTypesToRemove.length === 0)
-	        this.entitiesWithComponentsToRemove.push(entity);
-
-	      entity._ComponentTypes.splice(index, 1);
-	      entity._ComponentTypesToRemove.push(Component);
-
-	      var componentName = getName(Component);
-	      entity._componentsToRemove[componentName] =
-	        entity._components[componentName];
-	      delete entity._components[componentName];
-	    }
-
-	    // Check each indexed query to see if we need to remove it
-	    this._queryManager.onEntityComponentRemoved(entity, Component);
-
-	    if (Component.__proto__ === SystemStateComponent) {
-	      this.numStateComponents--;
-
-	      // Check if the entity was a ghost waiting for the last system state component to be removed
-	      if (this.numStateComponents === 0 && !entity.alive) {
-	        entity.remove();
+	      if (entity.queries.indexOf(query) !== -1) {
+	        query.removeEntity(entity);
 	      }
 	    }
 	  }
 
-	  _entityRemoveComponentSync(entity, Component, index) {
-	    // Remove T listing on entity and property ref, then free the component.
-	    entity._ComponentTypes.splice(index, 1);
-	    var propName = componentPropertyName(Component);
-	    var componentName = getName(Component);
-	    var component = entity._components[componentName];
-	    delete entity._components[componentName];
-	    this.componentsManager._componentPool[propName].release(component);
-	    this.world.componentsManager.componentRemovedFromEntity(Component);
-	  }
-
-	  /**
-	   * Remove all the components from an entity
-	   * @param {Entity} entity Entity from which the components will be removed
-	   */
-	  entityRemoveAllComponents(entity, immediately) {
-	    let Components = entity._ComponentTypes;
-
-	    for (let j = Components.length - 1; j >= 0; j--) {
-	      if (Components[j].__proto__ !== SystemStateComponent)
-	        this.entityRemoveComponent(entity, Components[j], immediately);
-	    }
-	  }
-
-	  /**
-	   * Remove the entity from this manager. It will clear also its components
-	   * @param {Entity} entity Entity to remove from the manager
-	   * @param {Bool} immediately If you want to remove the component immediately instead of deferred (Default is false)
-	   */
-	  removeEntity(entity, immediately) {
-	    var index = this._entities.indexOf(entity);
-
-	    if (!~index) throw new Error("Tried to remove entity not in list");
-
-	    entity.alive = false;
-
-	    if (this.numStateComponents === 0) {
-	      // Remove from entity list
-	      this.eventDispatcher.dispatchEvent(ENTITY_REMOVED, entity);
-	      this._queryManager.onEntityRemoved(entity);
-	      if (immediately === true) {
-	        this._releaseEntity(entity, index);
-	      } else {
-	        this.entitiesToRemove.push(entity);
-	      }
-	    }
-
-	    this.entityRemoveAllComponents(entity, immediately);
-	  }
-
-	  _releaseEntity(entity, index) {
-	    this._entities.splice(index, 1);
-
-	    // Prevent any access and free
-	    entity._world = null;
-	    this._entityPool.release(entity);
-	  }
-
-	  /**
-	   * Remove all entities from this manager
-	   */
-	  removeAllEntities() {
-	    for (var i = this._entities.length - 1; i >= 0; i--) {
-	      this.removeEntity(this._entities[i]);
-	    }
-	  }
-
-	  processDeferredRemoval() {
-	    if (!this.deferredRemovalEnabled) {
+	  onEntityDisposed(entity) {
+	    if (!this.entitiesByUUID[entity.uuid]) {
 	      return;
 	    }
 
-	    for (let i = 0; i < this.entitiesToRemove.length; i++) {
-	      let entity = this.entitiesToRemove[i];
-	      let index = this._entities.indexOf(entity);
-	      this._releaseEntity(entity, index);
+	    delete this.entitiesByUUID[entity.uuid];
+
+	    const index = this.entities.indexOf(entity);
+
+	    if (index !== -1) {
+	      this.entities.splice(index, 1);
 	    }
-	    this.entitiesToRemove.length = 0;
-
-	    for (let i = 0; i < this.entitiesWithComponentsToRemove.length; i++) {
-	      let entity = this.entitiesWithComponentsToRemove[i];
-	      while (entity._ComponentTypesToRemove.length > 0) {
-	        let Component = entity._ComponentTypesToRemove.pop();
-
-	        var propName = componentPropertyName(Component);
-	        var componentName = getName(Component);
-	        var component = entity._componentsToRemove[componentName];
-	        delete entity._componentsToRemove[componentName];
-	        this.componentsManager._componentPool[propName].release(component);
-	        this.world.componentsManager.componentRemovedFromEntity(Component);
-
-	        //this._entityRemoveComponentSync(entity, Component, index);
-	      }
-	    }
-
-	    this.entitiesWithComponentsToRemove.length = 0;
-	  }
-
-	  /**
-	   * Get a query based on a list of components
-	   * @param {Array(Component)} Components List of components that will form the query
-	   */
-	  queryComponents(Components) {
-	    return this._queryManager.getQuery(Components);
-	  }
-
-	  // EXTRAS
-
-	  /**
-	   * Return number of entities
-	   */
-	  count() {
-	    return this._entities.length;
-	  }
-
-	  /**
-	   * Return some stats
-	   */
-	  stats() {
-	    var stats = {
-	      numEntities: this._entities.length,
-	      numQueries: Object.keys(this._queryManager._queries).length,
-	      queries: this._queryManager.stats(),
-	      numComponentPool: Object.keys(this.componentsManager._componentPool)
-	        .length,
-	      componentPool: {},
-	      eventDispatcher: this.eventDispatcher.stats
-	    };
-
-	    for (var cname in this.componentsManager._componentPool) {
-	      var pool = this.componentsManager._componentPool[cname];
-	      stats.componentPool[cname] = {
-	        used: pool.totalUsed(),
-	        size: pool.count
-	      };
-	    }
-
-	    return stats;
-	  }
-	}
-
-	const ENTITY_CREATED = "EntityManager#ENTITY_CREATE";
-	const ENTITY_REMOVED = "EntityManager#ENTITY_REMOVED";
-	const COMPONENT_ADDED = "EntityManager#COMPONENT_ADDED";
-	const COMPONENT_REMOVE = "EntityManager#COMPONENT_REMOVE";
-
-	class DummyObjectPool {
-	  constructor(T) {
-	    this.isDummyObjectPool = true;
-	    this.count = 0;
-	    this.used = 0;
-	    this.T = T;
-	  }
-
-	  aquire() {
-	    this.used++;
-	    this.count++;
-	    return new this.T();
-	  }
-
-	  release() {
-	    this.used--;
-	  }
-
-	  totalSize() {
-	    return this.count;
-	  }
-
-	  totalFree() {
-	    return Infinity;
-	  }
-
-	  totalUsed() {
-	    return this.used;
-	  }
-	}
-
-	class ComponentManager {
-	  constructor() {
-	    this.Components = {};
-	    this._componentPool = {};
-	    this.numComponents = {};
-	  }
-
-	  registerComponent(Component) {
-	    if (this.Components[Component.name]) {
-	      console.warn(`Component type: '${Component.name}' already registered.`);
-	      return;
-	    }
-
-	    this.Components[Component.name] = Component;
-	    this.numComponents[Component.name] = 0;
-	  }
-
-	  componentAddedToEntity(Component) {
-	    if (!this.Components[Component.name]) {
-	      this.registerComponent(Component);
-	    }
-
-	    this.numComponents[Component.name]++;
-	  }
-
-	  componentRemovedFromEntity(Component) {
-	    this.numComponents[Component.name]--;
-	  }
-
-	  getComponentsPool(Component) {
-	    var componentName = componentPropertyName(Component);
-
-	    if (!this._componentPool[componentName]) {
-	      if (Component.prototype.reset) {
-	        this._componentPool[componentName] = new ObjectPool(Component);
-	      } else {
-	        console.warn(
-	          `Component '${Component.name}' won't benefit from pooling because 'reset' method was not implemented.`
-	        );
-	        this._componentPool[componentName] = new DummyObjectPool(Component);
-	      }
-	    }
-
-	    return this._componentPool[componentName];
-	  }
-	}
-
-	var name = "ecsy";
-	var version = "0.2.2";
-	var description = "Entity Component System in JS";
-	var main = "build/ecsy.js";
-	var module = "build/ecsy.module.js";
-	var types = "src/index.d.ts";
-	var scripts = {
-		build: "rollup -c && npm run docs",
-		docs: "rm docs/api/_sidebar.md; typedoc --readme none --mode file --excludeExternals --plugin typedoc-plugin-markdown  --theme docs/theme --hideSources --hideBreadcrumbs --out docs/api/ --includeDeclarations --includes 'src/**/*.d.ts' src; touch docs/api/_sidebar.md",
-		"dev:docs": "nodemon -e ts -x 'npm run docs' -w src",
-		dev: "concurrently --names 'ROLLUP,DOCS,HTTP' -c 'bgBlue.bold,bgYellow.bold,bgGreen.bold' 'rollup -c -w -m inline' 'npm run dev:docs' 'npm run dev:server'",
-		"dev:server": "http-server -c-1 -p 8080 --cors",
-		lint: "eslint src test examples",
-		start: "npm run dev",
-		test: "ava",
-		travis: "npm run lint && npm run test && npm run build",
-		"watch:test": "ava --watch"
-	};
-	var repository = {
-		type: "git",
-		url: "git+https://github.com/fernandojsg/ecsy.git"
-	};
-	var keywords = [
-		"ecs",
-		"entity component system"
-	];
-	var author = "Fernando Serrano <fernandojsg@gmail.com> (http://fernandojsg.com)";
-	var license = "MIT";
-	var bugs = {
-		url: "https://github.com/fernandojsg/ecsy/issues"
-	};
-	var ava = {
-		files: [
-			"test/**/*.test.js"
-		],
-		sources: [
-			"src/**/*.js"
-		],
-		require: [
-			"babel-register",
-			"esm"
-		]
-	};
-	var jspm = {
-		files: [
-			"package.json",
-			"LICENSE",
-			"README.md",
-			"build/ecsy.js",
-			"build/ecsy.min.js",
-			"build/ecsy.module.js"
-		],
-		directories: {
-		}
-	};
-	var homepage = "https://github.com/fernandojsg/ecsy#readme";
-	var devDependencies = {
-		ava: "^1.4.1",
-		"babel-cli": "^6.26.0",
-		"babel-core": "^6.26.3",
-		"babel-eslint": "^10.0.3",
-		"babel-loader": "^8.0.6",
-		concurrently: "^4.1.2",
-		"docsify-cli": "^4.4.0",
-		eslint: "^5.16.0",
-		"eslint-config-prettier": "^4.3.0",
-		"eslint-plugin-prettier": "^3.1.2",
-		"http-server": "^0.11.1",
-		nodemon: "^1.19.4",
-		prettier: "^1.19.1",
-		rollup: "^1.29.0",
-		"rollup-plugin-json": "^4.0.0",
-		"rollup-plugin-terser": "^5.2.0",
-		typedoc: "^0.15.8",
-		"typedoc-plugin-markdown": "^2.2.16",
-		typescript: "^3.7.5"
-	};
-	var pjson = {
-		name: name,
-		version: version,
-		description: description,
-		main: main,
-		"jsnext:main": "build/ecsy.module.js",
-		module: module,
-		types: types,
-		scripts: scripts,
-		repository: repository,
-		keywords: keywords,
-		author: author,
-		license: license,
-		bugs: bugs,
-		ava: ava,
-		jspm: jspm,
-		homepage: homepage,
-		devDependencies: devDependencies
-	};
-
-	const Version = pjson.version;
-
-	class World {
-	  constructor() {
-	    this.componentsManager = new ComponentManager(this);
-	    this.entityManager = new EntityManager(this);
-	    this.systemManager = new SystemManager(this);
-
-	    this.enabled = true;
-
-	    this.eventQueues = {};
-
-	    if (typeof CustomEvent !== "undefined") {
-	      var event = new CustomEvent("ecsy-world-created", {
-	        detail: { world: this, version: Version }
-	      });
-	      window.dispatchEvent(event);
-	    }
-
-	    this.lastTime = performance.now();
-	  }
-
-	  registerComponent(Component) {
-	    this.componentsManager.registerComponent(Component);
-	    return this;
-	  }
-
-	  registerSystem(System, attributes) {
-	    this.systemManager.registerSystem(System, attributes);
-	    return this;
-	  }
-
-	  getSystem(SystemClass) {
-	    return this.systemManager.getSystem(SystemClass);
-	  }
-
-	  getSystems() {
-	    return this.systemManager.getSystems();
 	  }
 
 	  execute(delta, time) {
@@ -1128,7 +961,24 @@
 
 	    if (this.enabled) {
 	      this.systemManager.execute(delta, time);
-	      this.entityManager.processDeferredRemoval();
+	      
+	      if (!this.deferredRemovalEnabled) {
+	        return;
+	      }
+	  
+	      for (let i = 0; i < this.entitiesToRemove.length; i++) {
+	        let entity = this.entitiesToRemove[i];
+	        entity.dispose(true);
+	      }
+	  
+	      this.entitiesToRemove.length = 0;
+	  
+	      for (let i = 0; i < this.entitiesWithComponentsToRemove.length; i++) {
+	        let entity = this.entitiesWithComponentsToRemove[i];
+	        entity.processRemovedComponents();
+	      }
+	  
+	      this.entitiesWithComponentsToRemove.length = 0;
 	    }
 	  }
 
@@ -1140,15 +990,31 @@
 	    this.enabled = true;
 	  }
 
-	  createEntity(name) {
-	    return this.entityManager.createEntity(name);
-	  }
-
 	  stats() {
 	    var stats = {
-	      entities: this.entityManager.stats(),
+	      entities: {
+	        numEntities: this.entities.length,
+	        numQueries: Object.keys(this.queries).length,
+	        queries: {},
+	        numComponentPool: Object.keys(this.componentPools).length,
+	        componentPool: {},
+	        eventDispatcher: super.stats()
+	      },
 	      system: this.systemManager.stats()
 	    };
+
+	    for (const queryName in this.queries) {
+	      stats.queries[queryName] = this.queries[queryName].stats();
+	    }
+
+	    for (const componentName in this.componentPools) {
+	      const pool = this.componentPools[componentName];
+
+	      stats.componentPool[componentName] = {
+	        used: pool.totalUsed(),
+	        size: pool.count
+	      };
+	    }
 
 	    console.log(JSON.stringify(stats, null, 2));
 	  }
@@ -1196,7 +1062,7 @@
 	        if (!Components || Components.length === 0) {
 	          throw new Error("'components' attribute can't be empty in a query");
 	        }
-	        var query = this.world.entityManager.queryComponents(Components);
+	        var query = this.world.getQuery(Components);
 	        this._queries[queryName] = query;
 	        if (queryConfig.mandatory === true) {
 	          this._mandatoryQueries.push(query);
@@ -1351,245 +1217,97 @@
 	  };
 	}
 
-	class Component {}
+	// TODO: The default clone and copy can be made faster by
+	// generating clone/copy functions at Component registration time
+	class Component {
+	  constructor(props) {
+	    const schema = this.constructor.schema;
 
+	    for (const key in schema) {
+	      const prop = schema[key];
+
+	      if (props.hasOwnProperty(key)) {
+	        this[key] = props[key];
+	      } else if (prop.hasOwnProperty("default")) {
+	        this[key] = prop.default;
+	      } else {
+	        this[key] = PropTypes.get(prop.type).default;
+	      }
+	    }
+
+	    this._pool = null;
+	  }
+
+	  copy(source) {
+	    const schema = this.constructor.schema;
+
+	    for (const key in schema) {
+	      const prop = schema[key];
+	      const type = PropTypes.get(prop.type);
+	      type.copy(source, this, key);
+	    }
+
+	    return this;
+	  }
+
+	  clone() {
+	    return this.constructor().copy(source);
+	  }
+
+	  dispose() {
+	    if (this._pool) {
+	      this._pool.release(this);
+	    }
+	  }
+	}
+
+	Component.schema = {};
 	Component.isComponent = true;
 
-	class TagComponent {
-	  reset() {}
+	class SystemStateComponent extends Component {
+	  constructor(...params) {
+	    super(...params);
+	    this.isSystemStateComponent = true;
+	  }
+	}
+
+	SystemStateComponent.isSystemStateComponent = true;
+
+	class TagComponent extends Component {
+	  constructor() {
+	    super();
+	    this.isTagComponent = true;
+	  }
 	}
 
 	TagComponent.isTagComponent = true;
 
-	function createType(typeDefinition) {
-	  var mandatoryFunctions = [
-	    "create",
-	    "reset",
-	    "clear"
-	    /*"copy"*/
-	  ];
+	const copyValue = (src, dest, key) => dest[key] = src[key];
+	const copyArray = (src, dest, key) => {
+	  const srcArray = src[key];
+	  const destArray = dest[key];
+	  
+	  destArray.length = 0;
 
-	  var undefinedFunctions = mandatoryFunctions.filter(f => {
-	    return !typeDefinition[f];
-	  });
-
-	  if (undefinedFunctions.length > 0) {
-	    throw new Error(
-	      `createType expect type definition to implements the following functions: ${undefinedFunctions.join(
-        ", "
-      )}`
-	    );
+	  for (let i = 0; i < srcArray.length; i++) {
+	    destArray.push(srcArray[i]);
 	  }
 
-	  typeDefinition.isType = true;
-	  return typeDefinition;
-	}
-
-	/**
-	 * Standard types
-	 */
-	var Types = {};
-
-	Types.Number = createType({
-	  baseType: Number,
-	  isSimpleType: true,
-	  create: defaultValue => {
-	    return typeof defaultValue !== "undefined" ? defaultValue : 0;
-	  },
-	  reset: (src, key, defaultValue) => {
-	    if (typeof defaultValue !== "undefined") {
-	      src[key] = defaultValue;
-	    } else {
-	      src[key] = 0;
-	    }
-	  },
-	  clear: (src, key) => {
-	    src[key] = 0;
-	  }
-	});
-
-	Types.Boolean = createType({
-	  baseType: Boolean,
-	  isSimpleType: true,
-	  create: defaultValue => {
-	    return typeof defaultValue !== "undefined" ? defaultValue : false;
-	  },
-	  reset: (src, key, defaultValue) => {
-	    if (typeof defaultValue !== "undefined") {
-	      src[key] = defaultValue;
-	    } else {
-	      src[key] = false;
-	    }
-	  },
-	  clear: (src, key) => {
-	    src[key] = false;
-	  }
-	});
-
-	Types.String = createType({
-	  baseType: String,
-	  isSimpleType: true,
-	  create: defaultValue => {
-	    return typeof defaultValue !== "undefined" ? defaultValue : "";
-	  },
-	  reset: (src, key, defaultValue) => {
-	    if (typeof defaultValue !== "undefined") {
-	      src[key] = defaultValue;
-	    } else {
-	      src[key] = "";
-	    }
-	  },
-	  clear: (src, key) => {
-	    src[key] = "";
-	  }
-	});
-
-	Types.Array = createType({
-	  baseType: Array,
-	  create: defaultValue => {
-	    if (typeof defaultValue !== "undefined") {
-	      return defaultValue.slice();
-	    }
-
-	    return [];
-	  },
-	  reset: (src, key, defaultValue) => {
-	    if (typeof defaultValue !== "undefined") {
-	      src[key] = defaultValue.slice();
-	    } else {
-	      src[key].length = 0;
-	    }
-	  },
-	  clear: (src, key) => {
-	    src[key].length = 0;
-	  },
-	  copy: (src, dst, key) => {
-	    src[key] = dst[key].slice();
-	  }
-	});
-
-	var standardTypes = {
-	  number: Types.Number,
-	  boolean: Types.Boolean,
-	  string: Types.String
+	  return destArray;
 	};
+	const copyJSON = (src, dest, key) => dest[key] = JSON.parse(JSON.stringify(src[key]));
+	const copyCopyable = (src, dest, key) => dest[key].copy(src[key]);
 
-	/**
-	 * Try to infer the type of the value
-	 * @param {*} value
-	 * @return {String} Type of the attribute
-	 * @private
-	 */
-	function inferType(value) {
-	  if (Array.isArray(value)) {
-	    return Types.Array;
-	  }
+	const Types = new Map();
 
-	  if (standardTypes[typeof value]) {
-	    return standardTypes[typeof value];
-	  } else {
-	    return null;
-	  }
-	}
-
-	function createComponentClass(schema, name) {
-	  //var Component = new Function(`return function ${name}() {}`)();
-	  for (let key in schema) {
-	    let type = schema[key].type;
-	    if (!type) {
-	      schema[key].type = inferType(schema[key].default);
-	    }
-	  }
-
-	  var Component = function() {
-	    for (let key in schema) {
-	      var attr = schema[key];
-	      let type = attr.type;
-	      if (type && type.isType) {
-	        this[key] = type.create(attr.default);
-	      } else {
-	        this[key] = attr.default;
-	      }
-	    }
-	  };
-
-	  if (typeof name !== "undefined") {
-	    Object.defineProperty(Component, "name", { value: name });
-	  }
-
-	  Component.prototype.schema = schema;
-
-	  var knownTypes = true;
-	  for (let key in schema) {
-	    var attr = schema[key];
-	    if (!attr.type) {
-	      attr.type = inferType(attr.default);
-	    }
-
-	    var type = attr.type;
-	    if (!type) {
-	      console.warn(`Unknown type definition for attribute '${key}'`);
-	      knownTypes = false;
-	    }
-	  }
-
-	  if (!knownTypes) {
-	    console.warn(
-	      `This component can't use pooling because some data types are not registered. Please provide a type created with 'createType'`
-	    );
-
-	    for (var key in schema) {
-	      let attr = schema[key];
-	      Component.prototype[key] = attr.default;
-	    }
-	  } else {
-	    Component.prototype.copy = function(src) {
-	      for (let key in schema) {
-	        if (src[key]) {
-	          let type = schema[key].type;
-	          if (type.isSimpleType) {
-	            this[key] = src[key];
-	          } else if (type.copy) {
-	            type.copy(this, src, key);
-	          } else {
-	            // @todo Detect that it's not possible to copy all the attributes
-	            // and just avoid creating the copy function
-	            console.warn(
-	              `Unknown copy function for attribute '${key}' data type`
-	            );
-	          }
-	        }
-	      }
-	    };
-
-	    Component.prototype.reset = function() {
-	      for (let key in schema) {
-	        let attr = schema[key];
-	        let type = attr.type;
-	        if (type.reset) type.reset(this, key, attr.default);
-	      }
-	    };
-
-	    Component.prototype.clear = function() {
-	      for (let key in schema) {
-	        let type = schema[key].type;
-	        if (type.clear) type.clear(this, key);
-	      }
-	    };
-
-	    for (let key in schema) {
-	      let attr = schema[key];
-	      let type = attr.type;
-	      Component.prototype[key] = attr.default;
-
-	      if (type.reset) {
-	        type.reset(Component.prototype, key, attr.default);
-	      }
-	    }
-	  }
-
-	  return Component;
-	}
+	Types.set(Number, { default: 0, copy: copyValue });
+	Types.set(Boolean, { default: false, copy: copyValue });
+	Types.set(String, { default: "", copy: copyValue });
+	Types.set(Object, { default: undefined, copy: copyValue });
+	Types.set(Array, { default: [], copy: copyArray });
+	Types.set(JSON, { default: null, copy: copyJSON });
+	Types.set(Entity, { default: undefined, copy: copyCopyable });
+	Types.set(Component, { default: undefined, copy: copyCopyable });
 
 	function generateId(length) {
 	  var result = "";
@@ -1757,15 +1475,15 @@
 	}
 
 	exports.Component = Component;
+	exports.EntityState = EntityState;
 	exports.Not = Not;
+	exports.ObjectPool = ObjectPool;
 	exports.System = System;
 	exports.SystemStateComponent = SystemStateComponent;
 	exports.TagComponent = TagComponent;
 	exports.Types = Types;
 	exports.Version = Version;
 	exports.World = World;
-	exports.createComponentClass = createComponentClass;
-	exports.createType = createType;
 	exports.enableRemoteDevtools = enableRemoteDevtools;
 
 	Object.defineProperty(exports, '__esModule', { value: true });

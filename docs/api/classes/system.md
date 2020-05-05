@@ -34,6 +34,12 @@ Should be used inside of execute.
 
 ___
 
+###  world
+
+• **world**: *[World](world.md)*
+
+___
+
 ### `Static` queries
 
 ▪ **queries**: *object*
