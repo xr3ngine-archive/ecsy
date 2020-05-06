@@ -1,4 +1,3 @@
-
 /**
  * Get a key from a list of components
  * @param {Array(Component)} Components Array of components to generate the key
@@ -21,13 +20,12 @@ export function queryKey(Components) {
 
 let _lut = [];
 
-for ( let i = 0; i < 256; i ++ ) {
-
-	_lut[ i ] = ( i < 16 ? '0' : '' ) + ( i ).toString( 16 );
-
+for (let i = 0; i < 256; i++) {
+  _lut[i] = (i < 16 ? "0" : "") + i.toString(16);
 }
 
 // https://github.com/mrdoob/three.js/blob/dev/src/math/MathUtils.js#L21
+// prettier-ignore
 export function generateUUID() {
   // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript/21963136#21963136
 

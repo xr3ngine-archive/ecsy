@@ -1,8 +1,8 @@
-import { Component } from "./Component"
+import { Component } from "./Component";
 
 export class SystemStateComponent extends Component {
-  constructor(...params) {
-    super(...params);
+  constructor(props) {
+    super(props);
     this.isSystemStateComponent = true;
   }
 }

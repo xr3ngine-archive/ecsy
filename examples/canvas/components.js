@@ -1,53 +1,38 @@
+import { Component } from "../../build/ecsy.module.js";
 import { Vector2 } from "./math.js";
 
-export class Movement {
-  constructor() {
-    this.velocity = new Vector2();
-    this.acceleration = new Vector2();
-  }
+export class Movement extends Component {}
 
-  reset() {
-    this.velocity.set(0, 0);
-    this.acceleration.set(0, 0);
-  }
-}
+Movement.schema = {
+  velocity: { type: Vector2 },
+  acceleration: { type: Vector2 }
+};
 
-export class Circle {
-  constructor() {
-    this.position = new Vector2();
-    this.radius = 0;
-    this.velocity = new Vector2();
-    this.acceleration = new Vector2();
-  }
+export class Circle extends Component {}
 
-  reset() {
-    this.position.set(0, 0);
-    this.radius = 0;
-    this.velocity.set(0, 0);
-    this.acceleration.set(0, 0);
-  }
-}
+Circle.schema = {
+  position: { type: Vector2 },
+  radius: { type: Number },
+  velocity: { type: Vector2 },
+  acceleration: { type: Vector2 }
+};
 
-export class CanvasContext {
-  constructor() {
-    this.ctx = null;
-    this.width = 0;
-    this.height = 0;
-  }
-}
+export class CanvasContext extends Component {}
 
-export class DemoSettings {
-  constructor() {
-    this.speedMultiplier = 0.001;
-  }
-}
+CanvasContext.schema = {
+  ctx: { type: Object },
+  width: { type: Number },
+  height: { type: Number }
+};
 
-export class Intersecting {
-  constructor() {
-    this.points = [];
-  }
+export class DemoSettings extends Component {}
 
-  reset() {
-    this.points.length = 0;
-  }
-}
+DemoSettings.schema = {
+  speedMultiplier: { type: Number, default: 0.001 }
+};
+
+export class Intersecting extends Component {}
+
+Intersecting.schema = {
+  points: { type: Array }
+};

@@ -31,7 +31,17 @@
 
       var world = new World();
 
-      world.systemManager
+      world
+        .registerComponent(Object3D)
+        .registerComponent(Collisionable)
+        .registerComponent(Collider)
+        .registerComponent(Recovering)
+        .registerComponent(Moving)
+        .registerComponent(PulsatingScale)
+        .registerComponent(Timeout)
+        .registerComponent(PulsatingColor)
+        .registerComponent(Colliding)
+        .registerComponent(Rotating)
         .registerSystem(RotatingSystem)
         .registerSystem(PulsatingColorSystem)
         .registerSystem(PulsatingScaleSystem)
@@ -77,7 +87,7 @@
     objMoving.material = material;
 
     var radius = 10;
-    var entity = world.entityManager.createEntity();
+    var entity = world.createEntity();
     entity.addComponent(Collider);
     entity.addComponent(Object3D, {object: objMoving});
     entity.addComponent(Rotating, {rotatingSpeed: 0.5});
@@ -95,7 +105,7 @@
     rootMesh.instancedBuffers.color = new BABYLON.Color4(1, 0, 0, 1);
 
     for (var i = 0;i < numObjects; i++) {
-      var entity = world.entityManager.createEntity();
+      var entity = world.createEntity();
 
       var mesh = rootMesh.createInstance('box');      
       mesh.instancedBuffers.color = new BABYLON.Color4(1, 0, 0, 1);

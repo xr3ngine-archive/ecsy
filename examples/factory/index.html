@@ -23,7 +23,7 @@
         textarea.innerHTML += msg + '\n';
       }
 
-      import {World, System, TagComponent, Not} from '../../build/ecsy.module.js';
+      import {World, System, Component, TagComponent, Not} from '../../build/ecsy.module.js';
 
       const names = [ 'Isabel', 'Scot', 'Francene', 'Robert', 'Kizzie', 'Leroy', 'Layla', 'Stella', 'Marianela', 'Devorah'];
       const sizes = [ 'XS', 'S', 'M', 'L', 'XL' ];
@@ -32,33 +32,25 @@
       // Components
       class NPC extends TagComponent {}
 
-      class Name {
-        constructor() {
-          this.reset();
-        }
+      class Name extends Component {}
 
-        reset() {
-          this.value = '';
-        }
-      }
+      Name.schema = {
+        value: { type: String }
+      };
 
-      class Tshirt {
-        constructor() {
-          this.reset();
-        }
+      class Tshirt extends Component {}
 
-        reset() {
-          this.color = 'white';
-          this.size = 'XL';
-        }
-      }
+      Tshirt.schema = {
+        color: { type: String, default: 'white' },
+        size: { type: String, default: 'XL' }
+      };
 
       // Systems
       class NameSystem extends System {
         execute() {
           this.queries.entities.results.forEach(entity => {
             var name = randomFromArray(names);
-            log(`Added name '${name}' to player id=${entity.id}`);
+            log(`Added name '${name}' to player id=${entity.uuid}`);
             entity.addComponent(Name, {value: name});
           });
         }
@@ -73,7 +65,7 @@
           this.queries.entities.results.forEach(entity => {
             var size = randomFromArray(sizes);
             var color = randomFromArray(colors);
-            log(`Added '${color}' '${size}' tshirt to player id=${entity.id}`);
+            log(`Added '${color}' '${size}' tshirt to player id=${entity.uuid}`);
             entity.addComponent(Tshirt, {color: color, size: size});
           });
         }
@@ -98,13 +90,13 @@
       document.getElementById('createNPC').addEventListener('click', () => {
         var npc = world.createEntity();
         npc.addComponent(NPC);
-        log(`> Created NPC, (id = ${npc.id})`);
+        log(`> Created NPC, (id = ${npc.uuid})`);
       });
 
       document.getElementById('removeName').addEventListener('click', () => {
         var entity = randomEntity();
         if (!entity) return;
-        log(`> Removing name '${entity.getComponent(Name).value}' from player id=${entity.id}`);
+        log(`> Removing name '${entity.getComponent(Name).value}' from player id=${entity.uuid}`);
         entity.removeComponent(Name);
       });
 
@@ -112,13 +104,13 @@
         var entity = randomEntity();
         if (!entity) return;
         var tshirt = entity.getComponent(Tshirt);
-        log(`> Removing '${tshirt.color}' '${tshirt.size}' from player id=${entity.id}`);
+        log(`> Removing '${tshirt.color}' '${tshirt.size}' from player id=${entity.uuid}`);
         entity.removeComponent(Tshirt);
       });
 
       // Utils
       function randomEntity() {
-        return randomFromArray(world.entityManager._entities);
+        return randomFromArray(world.entities);
       }
 
       function randomFromArray(array) {

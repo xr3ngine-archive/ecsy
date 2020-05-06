@@ -88,7 +88,7 @@ export class PulsatingScaleSystem extends System {
 
 PulsatingScaleSystem.queries = {
   entities: { components: [PulsatingScale] }
-}
+};
 
 export class MovingSystem extends System {
   execute(delta, time) {
@@ -141,6 +141,7 @@ export class ColliderSystem extends System {
   execute() {
     let boxes = this.queries.boxes.results;
     let balls = this.queries.balls.results;
+
     for (let i = 0; i < balls.length; i++) {
       let ball = balls[i];
       let ballObject = ball.getComponent(Object3D).object;

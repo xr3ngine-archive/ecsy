@@ -1,3 +1,5 @@
+import { Types, copyCopyable } from "./StandardTypes.js";
+
 // TODO: The default clone and copy can be made faster by
 // generating clone/copy functions at Component registration time
 export class Component {
@@ -5,14 +7,16 @@ export class Component {
     const schema = this.constructor.schema;
 
     for (const key in schema) {
-      const prop = schema[key];
+      const schemaProp = schema[key];
 
-      if (props.hasOwnProperty(key)) {
+      if (props && props.hasOwnProperty(key)) {
         this[key] = props[key];
-      } else if (prop.hasOwnProperty("default")) {
-        this[key] = prop.default;
+      } else if (schemaProp.hasOwnProperty("default")) {
+        const type = Types.get(schemaProp.type);
+        this[key] = type.clone(schemaProp.default);
       } else {
-        this[key] = PropTypes.get(prop.type).default;
+        const type = Types.get(schemaProp.type);
+        this[key] = type.clone(type.default);
       }
     }
 
@@ -22,17 +26,19 @@ export class Component {
   copy(source) {
     const schema = this.constructor.schema;
 
-    for (const key in schema) {
-      const prop = schema[key];
-      const type = PropTypes.get(prop.type);
-      type.copy(source, this, key);
+    for (const key in source) {
+      if (schema.hasOwnProperty(key)) {
+        const prop = schema[key];
+        const type = Types.get(prop.type);
+        type.copy(source, this, key);
+      }
     }
 
     return this;
   }
 
   clone() {
-    return this.constructor().copy(source);
+    return new this.constructor().copy(this);
   }
 
   dispose() {
@@ -44,3 +50,5 @@ export class Component {
 
 Component.schema = {};
 Component.isComponent = true;
+
+Types.set(Component, { default: undefined, copy: copyCopyable });

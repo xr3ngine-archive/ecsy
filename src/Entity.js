@@ -1,28 +1,10 @@
 import Query from "./Query.js";
 import wrapImmutableComponent from "./WrapImmutableComponent.js";
 import { generateUUID } from "./Utils";
+import { Types, copyCopyable } from "./StandardTypes.js";
 
 // @todo Take this out from there or use ENV
 const DEBUG = false;
-
-/**
- * Entity Lifecycle
- * - detached: alive = false, not in deferred entity removal array,
- *    not in an object pool free list, and not included in query results.
- * - alive: alive = true, not in deferred entity removal array,
- *    not in an object pool free list, and can be included in query results.
- * - removed: alive = false, in the deferred entity removal array,
- *    not in an object pool free list, and only included in removed event query results.
- * - dead: alive = false, not in the deferred entity removal array,
- *    and in an object pool free list, and not included in any query results.
- */
-
- export const EntityState = {
-   detached: "detached",
-   active: "active",
-   removed: "removed",
-   dead: "dead"
- };
 
 export class Entity {
   constructor(world) {
@@ -107,17 +89,18 @@ export class Entity {
       this._numSystemStateComponents++;
     }
 
-    var componentPool = this.world.getComponentPool(
-      Component
-    );
+    var componentPool = this.world.getComponentPool(Component);
 
-    var component = componentPool.acquire();
+    var component =
+      componentPool === undefined
+        ? new Component(props)
+        : componentPool.acquire();
 
-    this.components[Component.name] = component;
-
-    if (props) {
+    if (componentPool && props) {
       component.copy(props);
     }
+
+    this.components[Component.name] = component;
 
     if (this.alive) {
       this.world.onComponentAdded(this, Component);
@@ -153,29 +136,30 @@ export class Entity {
 
   removeComponent(Component, immediately) {
     const componentName = Component.name;
-    const component = this.components[componentName];
-
-    if (!component) {
-      return false;
-    }
 
     if (!this._componentsToRemove[componentName]) {
       delete this.components[componentName];
 
-      const index = this.componentTypes.findIndex(Component);
+      const index = this.componentTypes.indexOf(Component);
       this.componentTypes.splice(index, 1);
 
       this.world.onRemoveComponent(this, Component);
     }
-    
+
+    const component = this.components[componentName];
 
     if (immediately) {
-      component.dispose();
+      if (component) {
+        component.dispose();
+      }
 
       if (this._componentsToRemove[componentName]) {
         delete this._componentsToRemove[componentName];
-        const index = this._componentTypesToRemove.findIndex(Component);
-        this._componentTypesToRemove.splice(index, 1);
+        const index = this._componentTypesToRemove.indexOf(Component);
+
+        if (index !== -1) {
+          this._componentTypesToRemove.splice(index, 1);
+        }
       }
     } else {
       this._componentTypesToRemove.push(Component);
@@ -187,7 +171,7 @@ export class Entity {
       this._numSystemStateComponents--;
 
       // Check if the entity was a ghost waiting for the last system state component to be removed
-      if (this._numSystemStateComponents === 0 && !entity.alive) {
+      if (this._numSystemStateComponents === 0 && !this.alive) {
         this.dispose();
       }
     }
@@ -196,14 +180,14 @@ export class Entity {
   }
 
   processRemovedComponents() {
-    while (this.componentTypesToRemove.length > 0) {
-      let Component = this.componentTypesToRemove.pop();
+    while (this._componentTypesToRemove.length > 0) {
+      let Component = this._componentTypesToRemove.pop();
       this.removeComponent(Component, true);
     }
   }
 
   removeAllComponents(immediately) {
-    let Components = entity.componentTypes;
+    let Components = this.componentTypes;
 
     for (let j = Components.length - 1; j >= 0; j--) {
       this.removeComponent(Components[j], immediately);
@@ -215,7 +199,7 @@ export class Entity {
     for (const componentName in source.components) {
       const sourceComponent = source.components[componentName];
       this.components[componentName] = sourceComponent.clone();
-      this.componentTypes.push(sourceComponent.constructor)
+      this.componentTypes.push(sourceComponent.constructor);
     }
 
     return this;
@@ -262,3 +246,5 @@ export class Entity {
     }
   }
 }
+
+Types.set(Entity, { default: undefined, copy: copyCopyable });

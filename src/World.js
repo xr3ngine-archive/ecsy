@@ -22,7 +22,7 @@ export class World extends EventDispatcher {
     this.entities = [];
     this.entitiesByUUID = {};
 
-    this.entitiesWithComponentsToRemove = []; 
+    this.entitiesWithComponentsToRemove = [];
     this.entitiesToRemove = [];
     this.deferredRemovalEnabled = true;
 
@@ -54,7 +54,7 @@ export class World extends EventDispatcher {
     this.componentCounts[Component.name] = 0;
 
     if (objectPool === false) {
-      objectPool = null;
+      objectPool = undefined;
     } else if (objectPool === undefined) {
       objectPool = new ObjectPool(new Component());
     }
@@ -71,7 +71,7 @@ export class World extends EventDispatcher {
 
   createEntity() {
     const entity = this.createDetachedEntity();
-    return this.addEntity(entity)
+    return this.addEntity(entity);
   }
 
   createDetachedEntity() {
@@ -79,7 +79,7 @@ export class World extends EventDispatcher {
   }
 
   addEntity(entity) {
-    if (this.entitiesByUUID[entity.uuid])  {
+    if (this.entitiesByUUID[entity.uuid]) {
       console.warn(`Entity ${entity.uuid} already added.`);
       return entity;
     }
@@ -98,7 +98,12 @@ export class World extends EventDispatcher {
 
   createComponent(Component) {
     const componentPool = this.componentPools[Component.name];
-    return componentPool.acquire();
+
+    if (componentPool) {
+      return componentPool.acquire();
+    }
+
+    return new Component();
   }
 
   getComponentPool(Component) {
@@ -115,7 +120,7 @@ export class World extends EventDispatcher {
 
   getQuery(Components) {
     const key = queryKey(Components);
-    const query = this.queries[key];
+    let query = this.queries[key];
 
     if (!query) {
       this.queries[key] = query = new Query(Components, this);
@@ -160,15 +165,15 @@ export class World extends EventDispatcher {
     this.dispatchEvent(COMPONENT_ADDED, entity, Component);
   }
 
-  queueComponentRemoval() {
+  queueComponentRemoval(entity, _Component) {
     const index = this.entitiesWithComponentsToRemove.indexOf(entity);
 
-    if (index !== -1) {
+    if (index === -1) {
       this.entitiesWithComponentsToRemove.push(entity);
     }
   }
 
-  onRemoveComponent(Component) {
+  onRemoveComponent(entity, Component) {
     this.componentCounts[Component.name]--;
 
     for (var queryName in this.queries) {
@@ -198,7 +203,7 @@ export class World extends EventDispatcher {
     this.entitiesToRemove.push(entity);
   }
 
-  onDisposeEntity() {
+  onDisposeEntity(entity) {
     for (var queryName in this.queries) {
       const query = this.queries[queryName];
 
@@ -231,23 +236,23 @@ export class World extends EventDispatcher {
 
     if (this.enabled) {
       this.systemManager.execute(delta, time);
-      
+
       if (!this.deferredRemovalEnabled) {
         return;
       }
-  
+
       for (let i = 0; i < this.entitiesToRemove.length; i++) {
         let entity = this.entitiesToRemove[i];
         entity.dispose(true);
       }
-  
+
       this.entitiesToRemove.length = 0;
-  
+
       for (let i = 0; i < this.entitiesWithComponentsToRemove.length; i++) {
         let entity = this.entitiesWithComponentsToRemove[i];
         entity.processRemovedComponents();
       }
-  
+
       this.entitiesWithComponentsToRemove.length = 0;
     }
   }

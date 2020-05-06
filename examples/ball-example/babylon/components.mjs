@@ -1,44 +1,46 @@
-export class Collisionable {}
-export class Collider {}
-export class Recovering {}
-export class Moving {}
+import { Component, TagComponent } from "../../../build/ecsy.module.js";
 
-export class PulsatingScale {
-  constructor() {
-    this.offset = 0;
-  }
-}
+export class Collisionable extends TagComponent {}
+export class Collider extends TagComponent {}
+export class Recovering extends TagComponent {}
+export class Moving extends TagComponent {}
 
-export class Object3D {
-  constructor() {
-    this.object = null;
-  }
-}
+export class PulsatingScale extends Component {}
 
-export class Timeout {
-  constructor() {
-    this.timer = 0;
-    this.addComponents = [];
-    this.removeComponents = [];
-  }
-}
+PulsatingScale.schema = {
+  offset: { type: Number, default: 0 }
+};
 
-export class PulsatingColor {
-  constructor() {
-    this.offset = 0;
-  }
-}
+export class Object3D extends Component {}
 
-export class Colliding {
-  constructor() {
-    this.value = false;
-  }
-}
+Object3D.schema = {
+  object: { type: Object }
+};
 
-export class Rotating {
-  constructor() {
-    this.enabled = true;
-    this.rotatingSpeed = 0;
-    this.decreasingSpeed = 0.001;
-  }
-}
+export class Timeout extends Component {}
+
+Timeout.schema = {
+  timer: { type: Number },
+  addComponents: { type: Array },
+  removeComponents: { type: Array }
+};
+
+export class PulsatingColor extends Component {}
+
+PulsatingColor.schema = {
+  offset: { type: Number }
+};
+
+export class Colliding extends Component {}
+
+Colliding.schema = {
+  value: { type: Boolean }
+};
+
+export class Rotating extends Component {}
+
+Rotating.schema = {
+  enabled: { type: Boolean },
+  rotatingSpeed: { type: Number },
+  decreasingSpeed: { type: Number, default: 0.001 }
+};
