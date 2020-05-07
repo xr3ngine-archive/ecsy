@@ -1,20 +1,12 @@
 import { SystemManager } from "./SystemManager.js";
 import { Version } from "./Version.js";
-import EventDispatcher from "./EventDispatcher.js";
 import { Entity } from "./Entity.js";
 import { ObjectPool } from "./ObjectPool.js";
 import Query from "./Query.js";
 import { queryKey } from "./Utils.js";
 
-export const ENTITY_CREATED = "ENTITY_CREATED";
-export const ENTITY_REMOVED = "ENTITY_REMOVED";
-export const COMPONENT_ADDED = "COMPONENT_ADDED";
-export const COMPONENT_REMOVED = "COMPONENT_REMOVED";
-
-export class World extends EventDispatcher {
+export class World {
   constructor() {
-    super();
-
     this.systemManager = new SystemManager(this);
 
     this.entityPool = new ObjectPool(new Entity(this));
@@ -87,7 +79,6 @@ export class World extends EventDispatcher {
     this.entitiesByUUID[entity.uuid] = entity;
     this.entities.push(entity);
     entity.alive = true;
-    this.dispatchEvent(ENTITY_CREATED, entity);
 
     return entity;
   }
@@ -161,11 +152,9 @@ export class World extends EventDispatcher {
 
       query.addEntity(entity);
     }
-
-    this.dispatchEvent(COMPONENT_ADDED, entity, Component);
   }
 
-  queueComponentRemoval(entity, _Component) {
+  queueComponentRemoval(entity) {
     const index = this.entitiesWithComponentsToRemove.indexOf(entity);
 
     if (index === -1) {
@@ -272,8 +261,7 @@ export class World extends EventDispatcher {
         numQueries: Object.keys(this.queries).length,
         queries: {},
         numComponentPool: Object.keys(this.componentPools).length,
-        componentPool: {},
-        eventDispatcher: super.stats()
+        componentPool: {}
       },
       system: this.systemManager.stats()
     };
