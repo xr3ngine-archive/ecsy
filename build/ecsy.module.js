@@ -294,13 +294,12 @@ function queryKey(Components) {
 
 let _lut = [];
 
-for ( let i = 0; i < 256; i ++ ) {
-
-	_lut[ i ] = ( i < 16 ? '0' : '' ) + ( i ).toString( 16 );
-
+for (let i = 0; i < 256; i++) {
+  _lut[i] = (i < 16 ? "0" : "") + i.toString(16);
 }
 
 // https://github.com/mrdoob/three.js/blob/dev/src/math/MathUtils.js#L21
+// prettier-ignore
 function generateUUID() {
   // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript/21963136#21963136
 
@@ -421,24 +420,42 @@ Query.prototype.ENTITY_ADDED = "Query#ENTITY_ADDED";
 Query.prototype.ENTITY_REMOVED = "Query#ENTITY_REMOVED";
 Query.prototype.COMPONENT_CHANGED = "Query#COMPONENT_CHANGED";
 
-/**
- * Entity Lifecycle
- * - detached: alive = false, not in deferred entity removal array,
- *    not in an object pool free list, and not included in query results.
- * - alive: alive = true, not in deferred entity removal array,
- *    not in an object pool free list, and can be included in query results.
- * - removed: alive = false, in the deferred entity removal array,
- *    not in an object pool free list, and only included in removed event query results.
- * - dead: alive = false, not in the deferred entity removal array,
- *    and in an object pool free list, and not included in any query results.
- */
+const copyValue = (src, dest, key) => (dest[key] = src[key]);
 
- const EntityState = {
-   detached: "detached",
-   active: "active",
-   removed: "removed",
-   dead: "dead"
- };
+const cloneValue = src => src;
+
+const copyArray = (src, dest, key) => {
+  const srcArray = src[key];
+  const destArray = dest[key];
+
+  destArray.length = 0;
+
+  for (let i = 0; i < srcArray.length; i++) {
+    destArray.push(srcArray[i]);
+  }
+
+  return destArray;
+};
+
+const cloneArray = src => src.slice();
+
+const copyJSON = (src, dest, key) =>
+  (dest[key] = JSON.parse(JSON.stringify(src[key])));
+
+const cloneJSON = src => JSON.parse(JSON.stringify(src));
+
+const copyCopyable = (src, dest, key) => dest[key].copy(src[key]);
+
+const cloneClonable = src => src.clone();
+
+const Types = new Map();
+
+Types.set(Number, { default: 0, clone: cloneValue, copy: copyValue });
+Types.set(Boolean, { default: false, clone: cloneValue, copy: copyValue });
+Types.set(String, { default: "", clone: cloneValue, copy: copyValue });
+Types.set(Object, { default: undefined, clone: cloneValue, copy: copyValue });
+Types.set(Array, { default: [], clone: cloneArray, copy: copyArray });
+Types.set(JSON, { default: null, clone: cloneJSON, copy: copyJSON });
 
 class Entity {
   constructor(world) {
@@ -523,17 +540,18 @@ class Entity {
       this._numSystemStateComponents++;
     }
 
-    var componentPool = this.world.getComponentPool(
-      Component
-    );
+    var componentPool = this.world.getComponentPool(Component);
 
-    var component = componentPool.acquire();
+    var component =
+      componentPool === undefined
+        ? new Component(props)
+        : componentPool.acquire();
 
-    this.components[Component.name] = component;
-
-    if (props) {
+    if (componentPool && props) {
       component.copy(props);
     }
+
+    this.components[Component.name] = component;
 
     if (this.alive) {
       this.world.onComponentAdded(this, Component);
@@ -569,29 +587,30 @@ class Entity {
 
   removeComponent(Component, immediately) {
     const componentName = Component.name;
-    const component = this.components[componentName];
-
-    if (!component) {
-      return false;
-    }
 
     if (!this._componentsToRemove[componentName]) {
       delete this.components[componentName];
 
-      const index = this.componentTypes.findIndex(Component);
+      const index = this.componentTypes.indexOf(Component);
       this.componentTypes.splice(index, 1);
 
       this.world.onRemoveComponent(this, Component);
     }
-    
+
+    const component = this.components[componentName];
 
     if (immediately) {
-      component.dispose();
+      if (component) {
+        component.dispose();
+      }
 
       if (this._componentsToRemove[componentName]) {
         delete this._componentsToRemove[componentName];
-        const index = this._componentTypesToRemove.findIndex(Component);
-        this._componentTypesToRemove.splice(index, 1);
+        const index = this._componentTypesToRemove.indexOf(Component);
+
+        if (index !== -1) {
+          this._componentTypesToRemove.splice(index, 1);
+        }
       }
     } else {
       this._componentTypesToRemove.push(Component);
@@ -603,7 +622,7 @@ class Entity {
       this._numSystemStateComponents--;
 
       // Check if the entity was a ghost waiting for the last system state component to be removed
-      if (this._numSystemStateComponents === 0 && !entity.alive) {
+      if (this._numSystemStateComponents === 0 && !this.alive) {
         this.dispose();
       }
     }
@@ -612,14 +631,14 @@ class Entity {
   }
 
   processRemovedComponents() {
-    while (this.componentTypesToRemove.length > 0) {
-      let Component = this.componentTypesToRemove.pop();
+    while (this._componentTypesToRemove.length > 0) {
+      let Component = this._componentTypesToRemove.pop();
       this.removeComponent(Component, true);
     }
   }
 
   removeAllComponents(immediately) {
-    let Components = entity.componentTypes;
+    let Components = this.componentTypes;
 
     for (let j = Components.length - 1; j >= 0; j--) {
       this.removeComponent(Components[j], immediately);
@@ -679,6 +698,8 @@ class Entity {
   }
 }
 
+Types.set(Entity, { default: undefined, copy: copyCopyable });
+
 class ObjectPool {
   constructor(baseObject, initialSize) {
     this.freeList = [];
@@ -729,13 +750,8 @@ class ObjectPool {
   }
 }
 
-const ENTITY_CREATED = "ENTITY_CREATED";
-const COMPONENT_ADDED = "COMPONENT_ADDED";
-
-class World extends EventDispatcher {
+class World {
   constructor() {
-    super();
-
     this.systemManager = new SystemManager(this);
 
     this.entityPool = new ObjectPool(new Entity(this));
@@ -743,7 +759,7 @@ class World extends EventDispatcher {
     this.entities = [];
     this.entitiesByUUID = {};
 
-    this.entitiesWithComponentsToRemove = []; 
+    this.entitiesWithComponentsToRemove = [];
     this.entitiesToRemove = [];
     this.deferredRemovalEnabled = true;
 
@@ -775,7 +791,7 @@ class World extends EventDispatcher {
     this.componentCounts[Component.name] = 0;
 
     if (objectPool === false) {
-      objectPool = null;
+      objectPool = undefined;
     } else if (objectPool === undefined) {
       objectPool = new ObjectPool(new Component());
     }
@@ -792,7 +808,7 @@ class World extends EventDispatcher {
 
   createEntity() {
     const entity = this.createDetachedEntity();
-    return this.addEntity(entity)
+    return this.addEntity(entity);
   }
 
   createDetachedEntity() {
@@ -800,7 +816,7 @@ class World extends EventDispatcher {
   }
 
   addEntity(entity) {
-    if (this.entitiesByUUID[entity.uuid])  {
+    if (this.entitiesByUUID[entity.uuid]) {
       console.warn(`Entity ${entity.uuid} already added.`);
       return entity;
     }
@@ -808,7 +824,6 @@ class World extends EventDispatcher {
     this.entitiesByUUID[entity.uuid] = entity;
     this.entities.push(entity);
     entity.alive = true;
-    this.dispatchEvent(ENTITY_CREATED, entity);
 
     return entity;
   }
@@ -819,7 +834,12 @@ class World extends EventDispatcher {
 
   createComponent(Component) {
     const componentPool = this.componentPools[Component.name];
-    return componentPool.acquire();
+
+    if (componentPool) {
+      return componentPool.acquire();
+    }
+
+    return new Component();
   }
 
   getComponentPool(Component) {
@@ -836,7 +856,7 @@ class World extends EventDispatcher {
 
   getQuery(Components) {
     const key = queryKey(Components);
-    const query = this.queries[key];
+    let query = this.queries[key];
 
     if (!query) {
       this.queries[key] = query = new Query(Components, this);
@@ -877,19 +897,17 @@ class World extends EventDispatcher {
 
       query.addEntity(entity);
     }
-
-    this.dispatchEvent(COMPONENT_ADDED, entity, Component);
   }
 
-  queueComponentRemoval() {
+  queueComponentRemoval(entity) {
     const index = this.entitiesWithComponentsToRemove.indexOf(entity);
 
-    if (index !== -1) {
+    if (index === -1) {
       this.entitiesWithComponentsToRemove.push(entity);
     }
   }
 
-  onRemoveComponent(Component) {
+  onRemoveComponent(entity, Component) {
     this.componentCounts[Component.name]--;
 
     for (var queryName in this.queries) {
@@ -919,7 +937,7 @@ class World extends EventDispatcher {
     this.entitiesToRemove.push(entity);
   }
 
-  onDisposeEntity() {
+  onDisposeEntity(entity) {
     for (var queryName in this.queries) {
       const query = this.queries[queryName];
 
@@ -952,23 +970,23 @@ class World extends EventDispatcher {
 
     if (this.enabled) {
       this.systemManager.execute(delta, time);
-      
+
       if (!this.deferredRemovalEnabled) {
         return;
       }
-  
+
       for (let i = 0; i < this.entitiesToRemove.length; i++) {
         let entity = this.entitiesToRemove[i];
         entity.dispose(true);
       }
-  
+
       this.entitiesToRemove.length = 0;
-  
+
       for (let i = 0; i < this.entitiesWithComponentsToRemove.length; i++) {
         let entity = this.entitiesWithComponentsToRemove[i];
         entity.processRemovedComponents();
       }
-  
+
       this.entitiesWithComponentsToRemove.length = 0;
     }
   }
@@ -988,8 +1006,7 @@ class World extends EventDispatcher {
         numQueries: Object.keys(this.queries).length,
         queries: {},
         numComponentPool: Object.keys(this.componentPools).length,
-        componentPool: {},
-        eventDispatcher: super.stats()
+        componentPool: {}
       },
       system: this.systemManager.stats()
     };
@@ -1215,14 +1232,16 @@ class Component {
     const schema = this.constructor.schema;
 
     for (const key in schema) {
-      const prop = schema[key];
+      const schemaProp = schema[key];
 
-      if (props.hasOwnProperty(key)) {
+      if (props && props.hasOwnProperty(key)) {
         this[key] = props[key];
-      } else if (prop.hasOwnProperty("default")) {
-        this[key] = prop.default;
+      } else if (schemaProp.hasOwnProperty("default")) {
+        const type = Types.get(schemaProp.type);
+        this[key] = type.clone(schemaProp.default);
       } else {
-        this[key] = PropTypes.get(prop.type).default;
+        const type = Types.get(schemaProp.type);
+        this[key] = type.clone(type.default);
       }
     }
 
@@ -1232,17 +1251,19 @@ class Component {
   copy(source) {
     const schema = this.constructor.schema;
 
-    for (const key in schema) {
-      const prop = schema[key];
-      const type = PropTypes.get(prop.type);
-      type.copy(source, this, key);
+    for (const key in source) {
+      if (schema.hasOwnProperty(key)) {
+        const prop = schema[key];
+        const type = Types.get(prop.type);
+        type.copy(source, this, key);
+      }
     }
 
     return this;
   }
 
   clone() {
-    return this.constructor().copy(source);
+    return new this.constructor().copy(this);
   }
 
   dispose() {
@@ -1255,9 +1276,11 @@ class Component {
 Component.schema = {};
 Component.isComponent = true;
 
+Types.set(Component, { default: undefined, copy: copyCopyable });
+
 class SystemStateComponent extends Component {
-  constructor(...params) {
-    super(...params);
+  constructor(props) {
+    super(props);
     this.isSystemStateComponent = true;
   }
 }
@@ -1272,33 +1295,6 @@ class TagComponent extends Component {
 }
 
 TagComponent.isTagComponent = true;
-
-const copyValue = (src, dest, key) => dest[key] = src[key];
-const copyArray = (src, dest, key) => {
-  const srcArray = src[key];
-  const destArray = dest[key];
-  
-  destArray.length = 0;
-
-  for (let i = 0; i < srcArray.length; i++) {
-    destArray.push(srcArray[i]);
-  }
-
-  return destArray;
-};
-const copyJSON = (src, dest, key) => dest[key] = JSON.parse(JSON.stringify(src[key]));
-const copyCopyable = (src, dest, key) => dest[key].copy(src[key]);
-
-const Types = new Map();
-
-Types.set(Number, { default: 0, copy: copyValue });
-Types.set(Boolean, { default: false, copy: copyValue });
-Types.set(String, { default: "", copy: copyValue });
-Types.set(Object, { default: undefined, copy: copyValue });
-Types.set(Array, { default: [], copy: copyArray });
-Types.set(JSON, { default: null, copy: copyJSON });
-Types.set(Entity, { default: undefined, copy: copyCopyable });
-Types.set(Component, { default: undefined, copy: copyCopyable });
 
 function generateId(length) {
   var result = "";
@@ -1465,4 +1461,4 @@ if (urlParams.has("enable-remote-devtools")) {
   enableRemoteDevtools();
 }
 
-export { Component, EntityState, Not, ObjectPool, System, SystemStateComponent, TagComponent, Types, Version, World, enableRemoteDevtools };
+export { Component, Not, ObjectPool, System, SystemStateComponent, TagComponent, Types, Version, World, cloneArray, cloneClonable, cloneJSON, cloneValue, copyArray, copyCopyable, copyJSON, copyValue, enableRemoteDevtools };
