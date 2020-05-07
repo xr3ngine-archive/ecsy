@@ -1,5 +1,5 @@
 import Query from "./Query.js";
-import wrapImmutableComponent from "./WrapImmutableComponent.js";
+import { wrapImmutableComponent } from "./WrapImmutableComponent.js";
 import { generateUUID } from "./Utils";
 import { Types, copyCopyable } from "./StandardTypes.js";
 

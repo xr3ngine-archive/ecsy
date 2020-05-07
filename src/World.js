@@ -154,6 +154,20 @@ export class World {
     }
   }
 
+  onComponentChanged(entity, Component, component) {
+    for (var i = 0; i < entity.queries.length; i++) {
+      var query = entity.queries[i];
+      // @todo accelerate this check. Maybe having query._Components as an object
+      if (query.reactive && query.Components.indexOf(Component) !== -1) {
+        query.eventDispatcher.dispatchEvent(
+          Query.prototype.COMPONENT_CHANGED,
+          entity,
+          component
+        );
+      }
+    }
+  }
+
   queueComponentRemoval(entity) {
     const index = this.entitiesWithComponentsToRemove.indexOf(entity);
 

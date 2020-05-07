@@ -7,3 +7,4 @@ export * from "./StandardTypes.js";
 export { Version } from "./Version.js";
 export { enableRemoteDevtools } from "./RemoteDevTools/index.js";
 export { ObjectPool } from "./ObjectPool.js";
+export { wrapImmutableComponent as _wrapImmutableComponent } from "./WrapImmutableComponent";
