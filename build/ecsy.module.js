@@ -420,6 +420,33 @@ Query.prototype.ENTITY_ADDED = "Query#ENTITY_ADDED";
 Query.prototype.ENTITY_REMOVED = "Query#ENTITY_REMOVED";
 Query.prototype.COMPONENT_CHANGED = "Query#COMPONENT_CHANGED";
 
+const proxyMap = new WeakMap();
+
+const proxyHandler = {
+  set(target, prop) {
+    throw new Error(
+      `Tried to write to "${target.constructor.name}#${String(
+        prop
+      )}" on immutable component. Use .getMutableComponent() to modify a component.`
+    );
+  }
+};
+
+function wrapImmutableComponent(T, component) {
+  if (component === undefined) {
+    return undefined;
+  }
+
+  let wrappedComponent = proxyMap.get(component);
+
+  if (!wrappedComponent) {
+    wrappedComponent = new Proxy(component, proxyHandler);
+    proxyMap.set(component, wrappedComponent);
+  }
+
+  return wrappedComponent;
+}
+
 const copyValue = (src, dest, key) => (dest[key] = src[key]);
 
 const cloneValue = src => src;
@@ -896,6 +923,20 @@ class World {
         continue;
 
       query.addEntity(entity);
+    }
+  }
+
+  onComponentChanged(entity, Component, component) {
+    for (var i = 0; i < entity.queries.length; i++) {
+      var query = entity.queries[i];
+      // @todo accelerate this check. Maybe having query._Components as an object
+      if (query.reactive && query.Components.indexOf(Component) !== -1) {
+        query.eventDispatcher.dispatchEvent(
+          Query.prototype.COMPONENT_CHANGED,
+          entity,
+          component
+        );
+      }
     }
   }
 
@@ -1461,4 +1502,4 @@ if (urlParams.has("enable-remote-devtools")) {
   enableRemoteDevtools();
 }
 
-export { Component, Not, ObjectPool, System, SystemStateComponent, TagComponent, Types, Version, World, cloneArray, cloneClonable, cloneJSON, cloneValue, copyArray, copyCopyable, copyJSON, copyValue, enableRemoteDevtools };
+export { Component, Not, ObjectPool, System, SystemStateComponent, TagComponent, Types, Version, World, wrapImmutableComponent as _wrapImmutableComponent, cloneArray, cloneClonable, cloneJSON, cloneValue, copyArray, copyCopyable, copyJSON, copyValue, enableRemoteDevtools };
