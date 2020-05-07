@@ -80,6 +80,11 @@ export class World {
     this.entities.push(entity);
     entity.alive = true;
 
+    for (let i = 0; i < entity.componentTypes.length; i++) {
+      const Component = entity.componentTypes[i];
+      this.onComponentAdded(entity, Component);
+    }
+
     return entity;
   }
 
