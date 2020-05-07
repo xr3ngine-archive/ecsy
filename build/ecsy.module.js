@@ -621,7 +621,9 @@ class Entity {
       const index = this.componentTypes.indexOf(Component);
       this.componentTypes.splice(index, 1);
 
-      this.world.onRemoveComponent(this, Component);
+      if (this.alive) {
+        this.world.onRemoveComponent(this, Component);
+      }
     }
 
     const component = this.components[componentName];
@@ -639,7 +641,7 @@ class Entity {
           this._componentTypesToRemove.splice(index, 1);
         }
       }
-    } else {
+    } else if (this.alive) {
       this._componentTypesToRemove.push(Component);
       this._componentsToRemove[componentName] = component;
       this.world.queueComponentRemoval(this, Component);
@@ -851,6 +853,11 @@ class World {
     this.entitiesByUUID[entity.uuid] = entity;
     this.entities.push(entity);
     entity.alive = true;
+
+    for (let i = 0; i < entity.componentTypes.length; i++) {
+      const Component = entity.componentTypes[i];
+      this.onComponentAdded(entity, Component);
+    }
 
     return entity;
   }
