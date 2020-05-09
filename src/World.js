@@ -34,6 +34,8 @@ export class World {
     }
 
     this.lastTime = performance.now();
+
+    this.isWorld = true;
   }
 
   registerComponent(Component, objectPool) {
