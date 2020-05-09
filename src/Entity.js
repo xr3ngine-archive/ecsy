@@ -1,7 +1,6 @@
 import Query from "./Query.js";
 import { wrapImmutableComponent } from "./WrapImmutableComponent.js";
 import { generateUUID } from "./Utils";
-import { Types, copyCopyable } from "./StandardTypes.js";
 
 // @todo Take this out from there or use ENV
 const DEBUG = false;
@@ -248,5 +247,3 @@ export class Entity {
     }
   }
 }
-
-Types.set(Entity, { default: undefined, copy: copyCopyable });

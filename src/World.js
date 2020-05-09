@@ -39,7 +39,7 @@ export class World {
   registerComponent(Component, objectPool) {
     if (this.componentTypes[Component.name]) {
       console.warn(`Component type: '${Component.name}' already registered.`);
-      return;
+      return this;
     }
 
     this.componentTypes[Component.name] = Component;

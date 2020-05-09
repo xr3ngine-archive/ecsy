@@ -23,7 +23,7 @@
         textarea.innerHTML += msg + '\n';
       }
 
-      import {World, System, Component, TagComponent, Not} from '../../build/ecsy.module.js';
+      import { World, System, Component, TagComponent, Not, PropTypes } from '../../build/ecsy.module.js';
 
       const names = [ 'Isabel', 'Scot', 'Francene', 'Robert', 'Kizzie', 'Leroy', 'Layla', 'Stella', 'Marianela', 'Devorah'];
       const sizes = [ 'XS', 'S', 'M', 'L', 'XL' ];
@@ -35,14 +35,14 @@
       class Name extends Component {}
 
       Name.schema = {
-        value: { type: String }
+        value: { type: PropTypes.String }
       };
 
       class Tshirt extends Component {}
 
       Tshirt.schema = {
-        color: { type: String, default: 'white' },
-        size: { type: String, default: 'XL' }
+        color: { type: PropTypes.String, default: 'white' },
+        size: { type: PropTypes.String, default: 'XL' }
       };
 
       // Systems

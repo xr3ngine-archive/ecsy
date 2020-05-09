@@ -25,19 +25,19 @@
         textarea.innerHTML += msg + '\n';
       }
 
-      import {World, System, Component, SystemStateComponent, Not} from '../../build/ecsy.module.js';
+      import {World, System, Component, SystemStateComponent, Not, PropTypes} from '../../build/ecsy.module.js';
 
       class Sprite extends Component {}
 
       Sprite.schema = {
-        name: { type: String, default: "empty" }
+        name: { type: PropTypes.String, default: "empty" }
       };
 
       class SpriteResources extends SystemStateComponent {}
 
       SpriteResources.schema = {
-        size: { type: Number },
-        memPosition: { type: Number }
+        size: { type: PropTypes.Number },
+        memPosition: { type: PropTypes.Number }
       };
 
       // Systems

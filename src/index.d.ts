@@ -4,5 +4,5 @@ export * from "./Entity";
 export * from "./Component";
 export * from "./TagComponent";
 export * from "./SystemStateComponent";
-export * from "./StandardTypes";
+export * from "./PropTypes";
 export as namespace ecsy;

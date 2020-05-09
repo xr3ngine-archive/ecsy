@@ -26,11 +26,17 @@ export const copyCopyable = (src, dest, key) => dest[key].copy(src[key]);
 
 export const cloneClonable = src => src.clone();
 
-export const Types = new Map();
+export const createType = (defaultValue, clone, copy) => ({
+  default: defaultValue,
+  clone,
+  copy
+});
 
-Types.set(Number, { default: 0, clone: cloneValue, copy: copyValue });
-Types.set(Boolean, { default: false, clone: cloneValue, copy: copyValue });
-Types.set(String, { default: "", clone: cloneValue, copy: copyValue });
-Types.set(Object, { default: undefined, clone: cloneValue, copy: copyValue });
-Types.set(Array, { default: [], clone: cloneArray, copy: copyArray });
-Types.set(JSON, { default: null, clone: cloneJSON, copy: copyJSON });
+export const PropTypes = {
+  Number: { default: 0, clone: cloneValue, copy: copyValue },
+  Boolean: { default: false, clone: cloneValue, copy: copyValue },
+  String: { default: "", clone: cloneValue, copy: copyValue },
+  Object: { default: undefined, clone: cloneValue, copy: copyValue },
+  Array: { default: [], clone: cloneArray, copy: copyArray },
+  JSON: { default: null, clone: cloneJSON, copy: copyJSON }
+};

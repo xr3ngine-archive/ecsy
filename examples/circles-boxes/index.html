@@ -14,7 +14,7 @@
   </head>
   <body>
     <script type="module">
-      import { World, System, TagComponent, Component } from '../../build/ecsy.module.js';
+      import { World, System, TagComponent, Component, PropTypes } from '../../build/ecsy.module.js';
 
       const NUM_ELEMENTS = 600;
       const SPEED_MULTIPLIER = 0.1;
@@ -40,23 +40,23 @@
       class Velocity extends Component {}
 
       Velocity.schema = {
-        x: { type: Number },
-        y: { type: Number }
+        x: { type: PropTypes.Number },
+        y: { type: PropTypes.Number }
       };
 
       // Position component
       class Position extends Component {}
 
       Position.schema = {
-        x: { type: Number },
-        y: { type: Number }
+        x: { type: PropTypes.Number },
+        y: { type: PropTypes.Number }
       };
 
       // Shape component
       class Shape extends Component {}
 
       Shape.schema = {
-        primitive: { type: String, default: 'box' }
+        primitive: { type: PropTypes.String, default: 'box' }
       };
 
       // Renderable component

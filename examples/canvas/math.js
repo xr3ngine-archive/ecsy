@@ -1,4 +1,8 @@
-import { Types, copyCopyable, cloneClonable } from "../../build/ecsy.module.js";
+import {
+  createType,
+  copyCopyable,
+  cloneClonable
+} from "../../build/ecsy.module.js";
 
 export class Vector2 {
   constructor() {
@@ -23,8 +27,8 @@ export class Vector2 {
   }
 }
 
-Types.set(Vector2, {
-  default: new Vector2(),
-  clone: cloneClonable,
-  copy: copyCopyable
-});
+export const Vector2Type = createType(
+  new Vector2(),
+  cloneClonable,
+  copyCopyable
+);
