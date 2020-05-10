@@ -237,6 +237,26 @@ export class World {
     }
   }
 
+  processDeferredRemoval() {
+    if (!this.deferredRemovalEnabled) {
+      return;
+    }
+
+    for (let i = 0; i < this.entitiesToRemove.length; i++) {
+      let entity = this.entitiesToRemove[i];
+      entity.dispose(true);
+    }
+
+    this.entitiesToRemove.length = 0;
+
+    for (let i = 0; i < this.entitiesWithComponentsToRemove.length; i++) {
+      let entity = this.entitiesWithComponentsToRemove[i];
+      entity.processRemovedComponents();
+    }
+
+    this.entitiesWithComponentsToRemove.length = 0;
+  }
+
   execute(delta, time) {
     if (!delta) {
       let time = performance.now();
@@ -246,24 +266,7 @@ export class World {
 
     if (this.enabled) {
       this.systemManager.execute(delta, time);
-
-      if (!this.deferredRemovalEnabled) {
-        return;
-      }
-
-      for (let i = 0; i < this.entitiesToRemove.length; i++) {
-        let entity = this.entitiesToRemove[i];
-        entity.dispose(true);
-      }
-
-      this.entitiesToRemove.length = 0;
-
-      for (let i = 0; i < this.entitiesWithComponentsToRemove.length; i++) {
-        let entity = this.entitiesWithComponentsToRemove[i];
-        entity.processRemovedComponents();
-      }
-
-      this.entitiesWithComponentsToRemove.length = 0;
+      this.processDeferredRemoval();
     }
   }
 
