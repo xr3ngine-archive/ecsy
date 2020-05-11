@@ -1627,30 +1627,31 @@
 
 	function hookConsoleAndErrors(connection) {
 	  var wrapFunctions = ["error", "warning", "log"];
-	  wrapFunctions.forEach(key => {
+	  wrapFunctions.forEach((key) => {
 	    if (typeof console[key] === "function") {
 	      var fn = console[key].bind(console);
 	      console[key] = (...args) => {
 	        connection.send({
 	          method: "console",
 	          type: key,
-	          args: JSON.stringify(args)
+	          args: JSON.stringify(args),
 	        });
 	        return fn.apply(null, args);
 	      };
 	    }
 	  });
 
-	  if(!hasWindow$1) return;
-	  window.addEventListener("error", error => {
-	    connection.send({
-	      method: "error",
-	      error: JSON.stringify({
-	        message: error.error.message,
-	        stack: error.error.stack
-	      })
+	  if (hasWindow$1)
+	    window.addEventListener("error", (error) => {
+	      console.log(error);
+	      connection.send({
+	        method: "error",
+	        error: JSON.stringify({
+	          message: error.error.message,
+	          stack: error.error.stack,
+	        }),
+	      });
 	    });
-	  });
 	}
 
 	function includeRemoteIdHTML(remoteId) {
@@ -1679,18 +1680,18 @@
 	}
 
 	function enableRemoteDevtools(remoteId) {
-	  if(!hasWindow$1) return;
-	  window.generateNewCode = () => {
-	    window.localStorage.clear();
-	    remoteId = generateId(6);
-	    window.localStorage.setItem("ecsyRemoteId", remoteId);
-	    window.location.reload(false);
-	  };
+	  if (hasWindow$1)
+	    window.generateNewCode = () => {
+	      window.localStorage.clear();
+	      remoteId = generateId(6);
+	      window.localStorage.setItem("ecsyRemoteId", remoteId);
+	      window.location.reload(false);
+	    };
 
 	  remoteId = remoteId || window.localStorage.getItem("ecsyRemoteId");
 	  if (!remoteId) {
 	    remoteId = generateId(6);
-	    window.localStorage.setItem("ecsyRemoteId", remoteId);
+	    if (hasWindow$1) window.localStorage.setItem("ecsyRemoteId", remoteId);
 	  }
 
 	  let infoDiv = includeRemoteIdHTML(remoteId);
@@ -1702,7 +1703,7 @@
 
 	  // This is used to collect the worlds created before the communication is being established
 	  let worldsBeforeLoading = [];
-	  let onWorldCreated = e => {
+	  let onWorldCreated = (e) => {
 	    var world = e.detail.world;
 	    Version = e.detail.version;
 	    worldsBeforeLoading.push(world);
@@ -1712,7 +1713,7 @@
 	  let onLoaded = () => {
 	    var peer = new Peer(remoteId);
 	    peer.on("open", (/* id */) => {
-	      peer.on("connection", connection => {
+	      peer.on("connection", (connection) => {
 	        window.__ECSY_REMOTE_DEVTOOLS.connection = connection;
 	        connection.on("open", function() {
 	          // infoDiv.style.visibility = "hidden";
@@ -1731,9 +1732,9 @@
 	                  "ecsy-world-created",
 	                  onWorldCreated
 	                );
-	                worldsBeforeLoading.forEach(world => {
+	                worldsBeforeLoading.forEach((world) => {
 	                  var event = new CustomEvent("ecsy-world-created", {
-	                    detail: { world: world, version: Version }
+	                    detail: { world: world, version: Version },
 	                  });
 	                  window.dispatchEvent(event);
 	                });
@@ -1748,7 +1749,7 @@
 	              if (data.returnEval) {
 	                connection.send({
 	                  method: "evalReturn",
-	                  value: value
+	                  value: value,
 	                });
 	              }
 	            }
@@ -1758,14 +1759,14 @@
 	    });
 	  };
 
-	  // Inject PeerJS script
-	  injectScript(
-	    "https://cdn.jsdelivr.net/npm/peerjs@0.3.20/dist/peer.min.js",
-	    onLoaded
-	  );
-	}
+	  if (hasWindow$1) {
+	    // Inject PeerJS script
+	    injectScript(
+	      "https://cdn.jsdelivr.net/npm/peerjs@0.3.20/dist/peer.min.js",
+	      onLoaded
+	    );
+	  }
 
-	if (hasWindow$1) {
 	  const urlParams = new URLSearchParams(window.location.search);
 
 	  // @todo Provide a way to disable it if needed
