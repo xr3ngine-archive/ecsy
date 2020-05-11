@@ -18,9 +18,7 @@
 	  }
 
 	  registerSystem(System, attributes) {
-	    if (
-	      this._systems.find(s => s.constructor.name === System.name) !== undefined
-	    ) {
+	    if (this.getSystem(System) !== undefined) {
 	      console.warn(`System '${System.name}' already registered.`);
 	      return this;
 	    }
@@ -350,7 +348,7 @@
 
 	    this.alive = false;
 
-	    //if there are state components on a entity, it can't be removed
+	    //if there are state components on a entity, it can't be removed completely
 	    this.numStateComponents = 0;
 	  }
 
@@ -403,8 +401,8 @@
 	    return this;
 	  }
 
-	  removeComponent(Component, forceRemove) {
-	    this._world.entityRemoveComponent(this, Component, forceRemove);
+	  removeComponent(Component, forceImmediate) {
+	    this._world.entityRemoveComponent(this, Component, forceImmediate);
 	    return this;
 	  }
 
@@ -433,8 +431,8 @@
 	    return false;
 	  }
 
-	  removeAllComponents(forceRemove) {
-	    return this._world.entityRemoveAllComponents(this, forceRemove);
+	  removeAllComponents(forceImmediate) {
+	    return this._world.entityRemoveAllComponents(this, forceImmediate);
 	  }
 
 	  // EXTRAS
@@ -448,8 +446,8 @@
 	    this._components = {};
 	  }
 
-	  remove(forceRemove) {
-	    return this._world.removeEntity(this, forceRemove);
+	  remove(forceImmediate) {
+	    return this._world.removeEntity(this, forceImmediate);
 	  }
 	}
 
@@ -688,7 +686,14 @@
 	   * @param {Object} values Optional values to replace the default attributes
 	   */
 	  entityAddComponent(entity, Component, values) {
-	    if (~entity._ComponentTypes.indexOf(Component)) return;
+	    if (~entity._ComponentTypes.indexOf(Component)) {
+	      console.warn(
+	        "Component type already exists on entity.",
+	        entity,
+	        Component
+	      );
+	      return;
+	    }
 
 	    entity._ComponentTypes.push(Component);
 
@@ -1082,6 +1087,9 @@
 
 	const Version = pjson.version;
 
+	const hasWindow = typeof window !== "undefined";
+	const hasCustomEvent = typeof CustomEvent !== "undefined";
+
 	class World {
 	  constructor() {
 	    this.componentsManager = new ComponentManager(this);
@@ -1092,7 +1100,7 @@
 
 	    this.eventQueues = {};
 
-	    if (typeof CustomEvent !== "undefined") {
+	    if (hasWindow && hasCustomEvent) {
 	      var event = new CustomEvent("ecsy-world-created", {
 	        detail: { world: this, version: Version }
 	      });
@@ -1352,7 +1360,11 @@
 	  };
 	}
 
-	class Component {}
+	class Component {
+	  copy() {}
+	  reset() {}
+	  clear() {}
+	}
 
 	Component.isComponent = true;
 
@@ -1611,6 +1623,7 @@
 	}
 
 	/* global Peer */
+	const hasWindow$1 = typeof window !== "undefined";
 
 	function hookConsoleAndErrors(connection) {
 	  var wrapFunctions = ["error", "warning", "log"];
@@ -1628,6 +1641,7 @@
 	    }
 	  });
 
+	  if(!hasWindow$1) return;
 	  window.addEventListener("error", error => {
 	    connection.send({
 	      method: "error",
@@ -1665,6 +1679,7 @@
 	}
 
 	function enableRemoteDevtools(remoteId) {
+	  if(!hasWindow$1) return;
 	  window.generateNewCode = () => {
 	    window.localStorage.clear();
 	    remoteId = generateId(6);
@@ -1750,11 +1765,13 @@
 	  );
 	}
 
-	const urlParams = new URLSearchParams(window.location.search);
+	if (hasWindow$1) {
+	  const urlParams = new URLSearchParams(window.location.search);
 
-	// @todo Provide a way to disable it if needed
-	if (urlParams.has("enable-remote-devtools")) {
-	  enableRemoteDevtools();
+	  // @todo Provide a way to disable it if needed
+	  if (urlParams.has("enable-remote-devtools")) {
+	    enableRemoteDevtools();
+	  }
 	}
 
 	exports.Component = Component;

@@ -142,7 +142,7 @@ export function enableRemoteDevtools(remoteId) {
   );
 }
 
-if (typeof window !== "undefined") {
+if (hasWindow) {
   const urlParams = new URLSearchParams(window.location.search);
 
   // @todo Provide a way to disable it if needed

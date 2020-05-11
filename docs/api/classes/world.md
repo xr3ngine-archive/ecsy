@@ -25,9 +25,15 @@ Whether the world tick should execute.
 
 ###  createEntity
 
-▸ **createEntity**(): *[Entity](entity.md)*
+▸ **createEntity**(`name?`: string): *[Entity](entity.md)*
 
 Create a new entity
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name?` | string |
 
 **Returns:** *[Entity](entity.md)*
 
@@ -52,31 +58,31 @@ ___
 
 ###  getSystem
 
-▸ **getSystem**<**T**>(`System`: [SystemConstructor](../interfaces/systemconstructor.md)‹T›): *[System](system.md)*
+▸ **getSystem**<**T**>(`System`: SystemConstructor‹T›): *System*
 
 Get a system registered in this world.
 
 **Type parameters:**
 
-▪ **T**: *[System](system.md)*
+▪ **T**: *System*
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`System` | [SystemConstructor](../interfaces/systemconstructor.md)‹T› | Type of system to get.  |
+`System` | SystemConstructor‹T› | Type of system to get.  |
 
-**Returns:** *[System](system.md)*
+**Returns:** *System*
 
 ___
 
 ###  getSystems
 
-▸ **getSystems**(): *Array‹[System](system.md)›*
+▸ **getSystems**(): *Array‹System›*
 
 Get a list of systems registered in this world.
 
-**Returns:** *Array‹[System](system.md)›*
+**Returns:** *Array‹System›*
 
 ___
 
@@ -112,19 +118,20 @@ ___
 
 ###  registerSystem
 
-▸ **registerSystem**<**T**>(`System`: [SystemConstructor](../interfaces/systemconstructor.md)‹T›): *this*
+▸ **registerSystem**<**T**>(`System`: SystemConstructor‹T›, `attributes?`: object): *this*
 
 Register a system.
 
 **Type parameters:**
 
-▪ **T**: *[System](system.md)*
+▪ **T**: *System*
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`System` | [SystemConstructor](../interfaces/systemconstructor.md)‹T› | Type of system to register  |
+`System` | SystemConstructor‹T› | Type of system to register  |
+`attributes?` | object | - |
 
 **Returns:** *this*
 
