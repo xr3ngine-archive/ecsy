@@ -1,5 +1,6 @@
 /* global Peer */
 import { injectScript, generateId } from "./utils.js";
+const hasWindow = typeof window !== "undefined";
 
 function hookConsoleAndErrors(connection) {
   var wrapFunctions = ["error", "warning", "log"];
@@ -17,6 +18,7 @@ function hookConsoleAndErrors(connection) {
     }
   });
 
+  if(!hasWindow) return;
   window.addEventListener("error", error => {
     connection.send({
       method: "error",
@@ -54,6 +56,7 @@ function includeRemoteIdHTML(remoteId) {
 }
 
 export function enableRemoteDevtools(remoteId) {
+  if(!hasWindow) return;
   window.generateNewCode = () => {
     window.localStorage.clear();
     remoteId = generateId(6);
